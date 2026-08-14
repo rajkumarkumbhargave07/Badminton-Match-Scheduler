@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Courtside — Badminton Match Scheduler</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      background: #0E1B33;
+      background-image: 
+        linear-gradient(#0E1B33, #0E1B33),
+        repeating-linear-gradient(0deg, rgba(238,241,246,0.025) 0px, rgba(238,241,246,0.025) 1px, transparent 1px, transparent 80px),
+        repeating-linear-gradient(90deg, rgba(238,241,246,0.025) 0px, rgba(238,241,246,0.025) 1px, transparent 1px, transparent 80px);
+      color: #EEF1F6;
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+    h1, h2, h3, .display { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; margin: 0; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    button { font-family: inherit; cursor: pointer; }
+    :focus-visible { outline: 2px solid #D6FF3F; outline-offset: 2px; }
+
+    /* navbar */
+    .navbar {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px;
+      background: rgba(14,27,51,0.92);
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid rgba(238,241,246,0.12);
+    }
+    .navbar__brand { display: flex; align-items: center; gap: 10px; }
+    .navbar__brand .dot { width: 10px; height: 10px; border-radius: 50%; background: #D6FF3F; box-shadow: 0 0 10px #D6FF3F; }
+    .navbar__title { font-size: 18px; letter-spacing: 0.08em; }
+    .navbar__menu { position: relative; }
+    .navbar__toggle {
+      background: #1C3157; border: 1px solid rgba(238,241,246,0.15);
+      color: #EEF1F6; padding: 9px 16px; border-radius: 10px;
+      font-family: 'Oswald', sans-serif; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .navbar__toggle:hover { border-color: #D6FF3F; }
+    .navbar__caret { transition: transform .15s ease; }
+    .navbar__menu.open .navbar__caret { transform: rotate(180deg); }
+    .navbar__dropdown {
+      position: absolute; right: 0; top: calc(100% + 8px);
+      background: #1C3157; border: 1px solid rgba(238,241,246,0.15);
+      border-radius: 10px; min-width: 190px; overflow: hidden;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+      display: none; flex-direction: column;
+    }
+    .navbar__menu.open .navbar__dropdown { display: flex; }
+    .navbar__item {
+      padding: 12px 16px; background: transparent; border: 0; color: #EEF1F6;
+      text-align: left; font-size: 14px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .navbar__item:hover { background: #213A66; }
+    .navbar__item.active { color: #D6FF3F; }
+    .navbar__item.danger:hover { background: rgba(255,107,107,0.14); color: #FF6B6B; }
+
+    main { max-width: 480px; margin: 0 auto; padding: 24px 16px 80px; }
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* home */
+    .hero { margin-bottom: 28px; }
+    .hero__eyebrow { color: #D6FF3F; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 8px; }
+    .hero h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.05; }
+    .hero p { color: #8CA0C4; max-width: 560px; margin-top: 10px; font-size: 15px; line-height: 1.5; }
+
+    .panel {
+      background: #1C3157; border: 1px solid rgba(238,241,246,0.1);
+      border-radius: 14px; padding: 24px; margin-bottom: 20px;
+    }
+    .panel__title { font-size: 14px; color: #8CA0C4; letter-spacing: 0.1em; margin-bottom: 16px; }
+
+    .field-row { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 18px; }
+    .field { display: flex; flex-direction: column; gap: 8px; }
+    .field label { font-size: 12px; color: #8CA0C4; text-transform: uppercase; letter-spacing: 0.08em; }
+    .field .field-hint { font-size: 12px; color: #8CA0C4; text-transform: none; letter-spacing: 0; }
+    .field input[type="number"], .field select {
+      background: #16294A; border: 1px solid rgba(238,241,246,0.18);
+      color: #EEF1F6; padding: 11px 12px; border-radius: 8px; font-size: 15px;
+      width: 100%;
+      min-width: 0;
+    }
+    .duration-combo { display: flex; gap: 8px; }
+    .duration-combo input { flex: 1; min-width: 0; }
+    .duration-combo select { width: 110px; flex-shrink: 0; }
+
+    .segmented {
+      display: flex; background: #16294A; border-radius: 8px; padding: 4px; border: 1px solid rgba(238,241,246,0.18);
+    }
+    .segmented button {
+      flex: 1; background: transparent; border: 0; color: #8CA0C4;
+      padding: 9px 10px; border-radius: 6px; font-size: 14px; font-weight: 600;
+    }
+    .segmented button.active { background: #D6FF3F; color: #0E1B33; }
+
+    .player-names { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+    .player-names input {
+      background: #16294A; border: 1px solid rgba(238,241,246,0.18);
+      color: #EEF1F6; padding: 9px 10px; border-radius: 8px; font-size: 13px; width: 100%;
+      min-width: 0;
+    }
+
+    .btn {
+      border: 0; border-radius: 8px; padding: 13px 22px; font-family: 'Oswald', sans-serif;
+      font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600;
+    }
+    .btn-primary { background: #D6FF3F; color: #0E1B33; }
+    .btn-primary:hover { background: #a8c92f; }
+    .btn-ghost { background: transparent; border: 1px solid rgba(238,241,246,0.25); color: #EEF1F6; }
+    .btn-ghost:hover { border-color: #D6FF3F; color: #D6FF3F; }
+    .btn-danger { background: transparent; border: 1px solid rgba(255,107,107,0.5); color: #FF6B6B; }
+    .btn-danger:hover { background: rgba(255,107,107,0.12); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .banner { padding: 12px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
+    .banner-error { background: rgba(255,107,107,0.12); border: 1px solid rgba(255,107,107,0.4); color: #ffb3b3; }
+    .banner-warning { background: rgba(255,178,56,0.12); border: 1px solid rgba(255,178,56,0.4); color: #FFB238; }
+    .banner-empty { background: #1C3157; border: 1px dashed rgba(238,241,246,0.25); color: #8CA0C4; text-align: center; padding: 40px 20px; border-radius: 14px; }
+
+    /* scoreboard */
+    .scoreboard {
+      display: grid; grid-template-columns: 1fr 1fr;
+      background: #0E1B33; border: 1px solid rgba(214,255,63,0.3);
+      border-radius: 12px; overflow: hidden; margin-bottom: 24px;
+    }
+    .scoreboard__cell {
+      padding: 14px 16px; border-right: 1px solid rgba(238,241,246,0.1); border-bottom: 1px solid rgba(238,241,246,0.1);
+    }
+    .scoreboard__cell:nth-child(2n) { border-right: 0; }
+    .scoreboard__cell:nth-last-child(-n+2) { border-bottom: 0; }
+    .scoreboard__label { font-size: 10px; color: #8CA0C4; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 6px; }
+    .scoreboard__value { font-family: 'JetBrains Mono', monospace; font-size: 20px; color: #D6FF3F; font-weight: 600; }
+    .scoreboard__bar { height: 5px; background: #1C3157; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+    .scoreboard__bar-fill { height: 100%; background: #D6FF3F; }
+
+    /* match cards */
+    .match-list-heading { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; }
+    .match-list-heading span.line { flex: 1; height: 1px; background: rgba(238,241,246,0.15); }
+    .match-list-heading__label { font-size: 13px; color: #8CA0C4; letter-spacing: 0.12em; text-transform: uppercase; }
+
+    .match-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+
+    .match-card {
+      background: #1C3157; border: 1px solid rgba(238,241,246,0.1);
+      border-radius: 12px; overflow: hidden;
+    }
+    .match-card__meta {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; background: rgba(0,0,0,0.15);
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8CA0C4;
+    }
+    .match-card__court {
+      display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch;
+      min-height: 96px;
+    }
+    .match-card__side {
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      padding: 14px 10px; text-align: center; gap: 4px;
+    }
+    .match-card__side-name { font-size: 14px; font-weight: 600; line-height: 1.3; }
+    .match-card__net {
+      width: 0; border-left: 2px dashed rgba(238,241,246,0.3); position: relative;
+    }
+    .match-card__net::before {
+      content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 22px; height: 22px; border-radius: 50%; background: #0E1B33;
+      border: 1px solid rgba(238,241,246,0.3);
+    }
+    .match-card__actions { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid rgba(238,241,246,0.1); }
+    .match-card__win-btn {
+      background: transparent; border: 0; color: #8CA0C4; padding: 11px 8px;
+      font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 600;
+      border-right: 1px solid rgba(238,241,246,0.1);
+    }
+    .match-card__win-btn:last-child { border-right: 0; }
+    .match-card__win-btn:hover:not(:disabled) { background: rgba(214,255,63,0.12); color: #D6FF3F; }
+    .match-card__win-btn:disabled { cursor: default; }
+
+    .match-card.decided .match-card__side.winner { background: rgba(214,255,63,0.1); }
+    .match-card.decided .match-card__side.winner .match-card__side-name { color: #D6FF3F; }
+    .match-card.decided .match-card__side.winner::after { content: "🏸 WON"; font-size: 10px; letter-spacing: 0.1em; color: #D6FF3F; margin-top: 2px; }
+    .match-card.decided .match-card__side.loser { opacity: 0.45; }
+    .match-card.decided .match-card__win-btn { opacity: 0.35; }
+    .match-card.decided .match-card__win-btn.chosen { opacity: 1; color: #D6FF3F; }
+
+    /* leaderboard */
+    .leaderboard-wrap { width: 100%; overflow-x: auto; border-radius: 12px; }
+    .leaderboard-table { width: 100%; min-width: 420px; border-collapse: collapse; background: #1C3157; }
+    .leaderboard-table th, .leaderboard-table td { padding: 10px 12px; text-align: left; font-size: 13px; white-space: nowrap; }
+    .leaderboard-table thead th {
+      background: rgba(0,0,0,0.2); font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      color: #8CA0C4; text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .leaderboard-table tbody tr:not(:last-child) { border-bottom: 1px solid rgba(238,241,246,0.08); }
+    .leaderboard-table tbody tr:first-child .rank { color: #D6FF3F; }
+    .rank { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+    .win-pct { color: #8CA0C4; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+
+    .section-actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+
+    /* bottom nav */
+    .bottom-nav {
+      display: flex; justify-content: center; gap: 12px;
+      margin-top: 32px; padding-top: 16px;
+      border-top: 1px solid rgba(238,241,246,0.08);
+    }
+    .bottom-nav .btn { flex: 1; max-width: 140px; text-align: center; }
+
+    .share-btn {
+      background: #1C3157; border: 1px solid rgba(214,255,63,0.3);
+      color: #D6FF3F; padding: 10px 16px; border-radius: 8px;
+      font-family: 'Oswald', sans-serif; font-size: 13px; letter-spacing: 0.06em;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .share-btn:hover { background: #213A66; }
+
+    @media (max-width:400px){
+      .panel { padding: 16px; }
+      .duration-combo select { width: 90px; }
+      .field-row { gap: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce){ * { transition: none !important; } }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar__brand">
+    <span class="dot"></span>
+    <span class="navbar__title display">Courtside</span>
+  </div>
+  <div class="navbar__menu" id="navMenu">
+    <button class="navbar__toggle" id="navToggle" aria-haspopup="true" aria-expanded="false">
+      Menu <span class="navbar__caret">▾</span>
+    </button>
+    <div class="navbar__dropdown" role="menu">
+      <button class="navbar__item" data-view="home" role="menuitem">Home</button>
+      <button class="navbar__item" data-view="matches" role="menuitem">Matches</button>
+      <button class="navbar__item" data-view="leaderboard" role="menuitem">Leaderboard</button>
+      <button class="navbar__item danger" id="resetBtn" role="menuitem">Reset</button>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+  <!-- HOME -->
+  <section class="view" id="view-home">
+    <div class="hero">
+      <div class="hero__eyebrow">Match Scheduler</div>
+      <h1 id="homeHeading">Set the court</h1>
+      <p>Enter your players, total time, format and game point. Courtside works out
+      how many unique matches fit and lets you fine-tune the count.</p>
+    </div>
+    <div id="homeBanner"></div>
+
+    <form class="panel" id="setupForm">
+      <div class="panel__title">Tournament setup</div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="numPlayers">Number of players</label>
+          <input type="number" id="numPlayers" min="2" max="40" step="1" value="6" required>
+        </div>
+        <div class="field">
+          <label for="durationValue">Total duration</label>
+          <div class="duration-combo">
+            <input type="number" id="durationValue" min="1" step="1" value="2" required>
+            <select id="durationUnit">
+              <option value="hrs" selected>Hours</option>
+              <option value="min">Minutes</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Format</label>
+          <div class="segmented" id="formatSegmented">
+            <button type="button" data-format="doubles" class="active">Doubles</button>
+            <button type="button" data-format="singles">Singles</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Game point</label>
+          <div class="segmented" id="gamePointSegmented">
+            <button type="button" data-point="21" class="active">21 pts</button>
+            <button type="button" data-point="15">15 pts</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom:18px;">
+        <label>Player names <span class="field-hint">(optional — defaults to Player N)</span></label>
+        <div class="player-names" id="playerNames"></div>
+      </div>
+
+      <div class="field" style="margin-bottom:18px;">
+        <label for="matchCount">Matches to schedule</label>
+        <input type="number" id="matchCount" min="1" step="1" value="1">
+        <span class="field-hint" id="matchCountHint"></span>
+      </div>
+
+      <div class="section-actions">
+        <button type="submit" class="btn btn-primary" id="generateBtn">Generate Matches</button>
+      </div>
+    </form>
+
+    <!-- bottom nav -->
+    <div class="bottom-nav">
+      <button class="btn btn-ghost" onclick="setView('matches')">Matches</button>
+      <button class="btn btn-ghost" onclick="setView('leaderboard')">Leaderboard</button>
+    </div>
+  </section>
+
+  <!-- MATCHES -->
+  <section class="view" id="view-matches">
+    <div class="hero">
+      <div class="hero__eyebrow">Schedule</div>
+      <h1>Matches</h1>
+    </div>
+    <div id="matchesContent"></div>
+
+    <div class="bottom-nav">
+      <button class="btn btn-ghost" onclick="setView('home')">Home</button>
+      <button class="btn btn-ghost" onclick="setView('leaderboard')">Leaderboard</button>
+      <button class="share-btn" id="shareMatchesBtn">📤 Share</button>
+    </div>
+  </section>
+
+  <!-- LEADERBOARD -->
+  <section class="view" id="view-leaderboard">
+    <div class="hero">
+      <div class="hero__eyebrow">Standings</div>
+      <h1>Leaderboard</h1>
+    </div>
+    <div id="leaderboardContent"></div>
+
+    <div class="bottom-nav">
+      <button class="btn btn-ghost" onclick="setView('home')">Home</button>
+      <button class="btn btn-ghost" onclick="setView('matches')">Matches</button>
+      <button class="share-btn" id="shareLeaderboardBtn">📤 Share</button>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  /* ─── STATE ─── */
+  const STORAGE_KEY = 'courtside_state_v2';
+  let storageAvailable = true;
+
+  function defaultState(){
+    return {
+      config: { numPlayers: 6, durationValue: 2, durationUnit: 'hrs', format: 'doubles', gamePoint: 21, matchCount: null },
+      playerNames: [],
+      players: [],
+      matches: [],
+      matchMinutes: 0,
+      generated: false,
+      warning: null,
+      currentView: 'home'
+    };
+  }
+
+  function loadState(){
+    try { const raw = localStorage.getItem(STORAGE_KEY); if(!raw) return defaultState(); return Object.assign(defaultState(), JSON.parse(raw)); }
+    catch(e){ storageAvailable = false; return defaultState(); }
+  }
+
+  let state = loadState();
+
+  function saveState(){
+    if(!storageAvailable) return;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){ storageAvailable = false; }
+  }
+
+  function resetState(){
+    try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+    state = defaultState();
+    saveState();
+    renderAll();
+    setView('home');
+  }
+
+  /* ─── MATCH ENGINE ─── */
+  const MatchEngine = (function(){
+    const TRANSITION_MINUTES = 3;
+    const ABS_MIN_MATCH_MINUTES = 4;
+
+    function combin(n,k){ if(k<0||k>n) return 0; k=Math.min(k,n-k); let r=1; for(let i=0;i<k;i++) r = r*(n-i)/(i+1); return Math.round(r); }
+
+    function combinationIndices(n,k){
+      const results=[]; const combo=[];
+      function recurse(start){
+        if(combo.length===k){ results.push(combo.slice()); return; }
+        for(let i=start;i<n;i++){ combo.push(i); recurse(i+1); combo.pop(); }
+      }
+      recurse(0);
+      return results;
+    }
+
+    function shuffle(arr){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+    function matchMinutesForGamePoint(gamePoint){ return Math.max(ABS_MIN_MATCH_MINUTES, Math.round(15 * (gamePoint / 21))); }
+
+    function maxUniqueMatches(n, format){
+      if(format === 'singles') return n >= 2 ? combin(n,2) : 0;
+      return n >= 4 ? combin(n,4) * 3 : 0;
+    }
+
+    function timeFitCount(totalMinutes, matchMinutes){
+      if(matchMinutes <= 0) return 0;
+      return Math.max(0, Math.floor((totalMinutes + TRANSITION_MINUTES) / (matchMinutes + TRANSITION_MINUTES)));
+    }
+
+    function estimate(n, format, totalMinutes, gamePoint){
+      const maxUnique = maxUniqueMatches(n, format);
+      const estMatchMinutes = matchMinutesForGamePoint(gamePoint);
+      const fit = timeFitCount(totalMinutes, estMatchMinutes);
+      const recommended = maxUnique > 0 ? Math.max(1, Math.min(maxUnique, fit || 1)) : 0;
+      return { maxUnique, estMatchMinutes, timeFit: fit, recommended };
+    }
+
+    function generateSinglesMatches(players, desiredCount){
+      const entities = shuffle(players).map(p => ({ id: p.id, name: p.name }));
+      let list = entities.slice();
+      const hasBye = list.length % 2 !== 0;
+      if(hasBye) list.push({ id:'bye', name:'BYE', isBye:true });
+      const n = list.length;
+      if(n < 2) return [];
+      const fixed = list[0];
+      let rotating = list.slice(1);
+      const rounds = [];
+      for(let r=0; r<n-1; r++){
+        const roundEntities = [fixed, ...rotating];
+        const roundMatches = [];
+        for(let i=0; i<n/2; i++){
+          const a = roundEntities[i];
+          const b = roundEntities[n-1-i];
+          if(!a.isBye && !b.isBye) roundMatches.push({ sideA: a, sideB: b });
+        }
+        if(roundMatches.length) rounds.push(roundMatches);
+        rotating.unshift(rotating.pop());
+      }
+      const flat = rounds.flat().slice(0, desiredCount);
+      return flat.map(m => ({
+        sideA: { playerIds: [m.sideA.id], label: m.sideA.name },
+        sideB: { playerIds: [m.sideB.id], label: m.sideB.name }
+      }));
+    }
+
+    function generateDoublesMatches(players, desiredCount){
+      const n = players.length;
+      if(n < 4 || desiredCount <= 0) return [];
+      const playedCount = {}; players.forEach(p => playedCount[p.id] = 0);
+      const usedPartnerships = new Map();
+      const usedMatchKeys = new Set();
+      const matches = [];
+      function partnershipKey(pair){ return pair.map(p => p.id).sort().join('+'); }
+      function matchKey(sideA, sideB){
+        const a = partnershipKey(sideA), b = partnershipKey(sideB);
+        return [a,b].sort().join('__');
+      }
+      function bumpPartnership(pair){ const k = partnershipKey(pair); usedPartnerships.set(k, (usedPartnerships.get(k)||0)+1); }
+      function commit(sideA, sideB){
+        matches.push({ sideA, sideB });
+        usedMatchKeys.add(matchKey(sideA, sideB));
+        sideA.forEach(p => playedCount[p.id]++);
+        sideB.forEach(p => playedCount[p.id]++);
+        bumpPartnership(sideA);
+        bumpPartnership(sideB);
+      }
+      function splitScore(sideA, sideB){
+        return (usedPartnerships.get(partnershipKey(sideA))||0) + (usedPartnerships.get(partnershipKey(sideB))||0);
+      }
+
+      const smallPool = n <= 16;
+      if(smallPool){
+        let candidates = [];
+        combinationIndices(n, 4).forEach(idxSet => {
+          const [a,b,c,d] = idxSet.map(i => players[i]);
+          [[[a,b],[c,d]], [[a,c],[b,d]], [[a,d],[b,c]]].forEach(([sA,sB]) => candidates.push({ sideA: sA, sideB: sB }));
+        });
+        while(matches.length < desiredCount && candidates.length){
+          candidates = candidates.filter(c => !usedMatchKeys.has(matchKey(c.sideA, c.sideB)));
+          if(!candidates.length) break;
+          candidates.sort((x,y) => {
+            const px = x.sideA.concat(x.sideB).reduce((s,p)=>s+playedCount[p.id],0);
+            const py = y.sideA.concat(y.sideB).reduce((s,p)=>s+playedCount[p.id],0);
+            if(px !== py) return px - py;
+            return splitScore(x.sideA, x.sideB) - splitScore(y.sideA, y.sideB);
+          });
+          const shortlist = candidates.slice(0, Math.min(5, candidates.length));
+          const pick = shortlist[Math.floor(Math.random() * shortlist.length)];
+          commit(pick.sideA, pick.sideB);
+        }
+      } else {
+        let attempts = 0;
+        const maxAttempts = desiredCount * 100 + 500;
+        while(matches.length < desiredCount && attempts < maxAttempts){
+          attempts++;
+          const sorted = players.slice().sort((x,y) => playedCount[x.id] - playedCount[y.id] || Math.random() - 0.5);
+          const [a,b,c,d] = sorted.slice(0,4);
+          const splits = [[[a,b],[c,d]], [[a,c],[b,d]], [[a,d],[b,c]]]
+            .sort((s1,s2) => splitScore(s1[0],s1[1]) - splitScore(s2[0],s2[1]));
+          const [sideA, sideB] = splits[0];
+          if(usedMatchKeys.has(matchKey(sideA, sideB))) continue;
+          commit(sideA, sideB);
+        }
+      }
+      return matches.map(m => ({
+        sideA: { playerIds: m.sideA.map(p=>p.id), label: m.sideA.map(p=>p.name).join(' & ') },
+        sideB: { playerIds: m.sideB.map(p=>p.id), label: m.sideB.map(p=>p.name).join(' & ') }
+      }));
+    }
+
+    function assignSchedule(flatMatches, totalMinutes){
+      const count = flatMatches.length;
+      if(count === 0) return { matches: [], matchMinutes: 0, warning: null };
+      let matchMinutes = Math.floor((totalMinutes - (count - 1) * TRANSITION_MINUTES) / count);
+      let warning = null;
+      if(matchMinutes < ABS_MIN_MATCH_MINUTES){
+        matchMinutes = ABS_MIN_MATCH_MINUTES;
+        warning = `Tight schedule: matches are set to the ${ABS_MIN_MATCH_MINUTES}-min floor to fit all ${count} into your total duration. Reduce match count or add time for a more comfortable pace.`;
+      }
+      let cursor = 0, id = 1;
+      const scheduled = flatMatches.map(m => {
+        const startMin = cursor, endMin = cursor + matchMinutes;
+        cursor = endMin + TRANSITION_MINUTES;
+        return { id: 'm' + (id++), sideA: m.sideA, sideB: m.sideB, winnerSide: null, startMin, endMin };
+      });
+      return { matches: scheduled, matchMinutes, warning };
+    }
+
+    function generate(config, players){
+      const totalMinutes = config.durationUnit === 'hrs' ? Number(config.durationValue) * 60 : Number(config.durationValue);
+      const flat = config.format === 'singles' ? generateSinglesMatches(players, config.matchCount) : generateDoublesMatches(players, config.matchCount);
+      return assignSchedule(flat, totalMinutes);
+    }
+
+    return { estimate, maxUniqueMatches, matchMinutesForGamePoint, timeFitCount, generate };
+  })();
+
+  /* ─── HELPERS ─── */
+  function formatMinutes(min){ const h=Math.floor(min/60), m=min%60; return h>0 ? `${h}:${String(m).padStart(2,'0')}` : `0:${String(m).padStart(2,'0')}`; }
+  function getFormat(){ return document.querySelector('#formatSegmented button.active').dataset.format; }
+  function getGamePoint(){ return Number(document.querySelector('#gamePointSegmented button.active').dataset.point); }
+
+  /* ─── RENDER HOME ─── */
+  function renderPlayerNameInputs(){
+    const container = document.getElementById('playerNames');
+    const n = Math.max(0, Math.min(40, Number(document.getElementById('numPlayers').value) || 0));
+    const existing = state.playerNames || [];
+    container.innerHTML = '';
+    for(let i=0;i<n;i++){
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = `Player ${i+1}`;
+      input.value = existing[i] || '';
+      input.dataset.idx = i;
+      container.appendChild(input);
+    }
+  }
+
+  function updateEstimate(){
+    const numPlayers = Math.max(0, Number(document.getElementById('numPlayers').value) || 0);
+    const durationValue = Number(document.getElementById('durationValue').value) || 0;
+    const durationUnit = document.getElementById('durationUnit').value;
+    const format = getFormat();
+    const gamePoint = getGamePoint();
+    const totalMinutes = durationUnit === 'hrs' ? durationValue*60 : durationValue;
+
+    const est = MatchEngine.estimate(numPlayers, format, totalMinutes, gamePoint);
+    const countInput = document.getElementById('matchCount');
+    const hint = document.getElementById('matchCountHint');
+
+    if(est.maxUnique === 0){
+      countInput.min = 0; countInput.max = 0; countInput.value = 0; countInput.disabled = true;
+      hint.textContent = '';
+      return;
+    }
+    countInput.disabled = false;
+    countInput.min = 1;
+    countInput.max = est.maxUnique;
+    const desired = Number(countInput.dataset.userSet === '1' ? countInput.value : est.recommended);
+    countInput.value = Math.min(Math.max(desired || est.recommended, 1), est.maxUnique);
+    hint.textContent = `Choose 1–${est.maxUnique}. Recommended: ${est.recommended} based on your time and player count.`;
+  }
+
+  function renderHome(){
+    document.getElementById('numPlayers').value = state.config.numPlayers;
+    document.getElementById('durationValue').value = state.config.durationValue;
+    document.getElementById('durationUnit').value = state.config.durationUnit;
+    document.querySelectorAll('#formatSegmented button').forEach(btn => btn.classList.toggle('active', btn.dataset.format === state.config.format));
+    document.querySelectorAll('#gamePointSegmented button').forEach(btn => btn.classList.toggle('active', Number(btn.dataset.point) === state.config.gamePoint));
+    renderPlayerNameInputs();
+    const countInput = document.getElementById('matchCount');
+    countInput.dataset.userSet = '0';
+    updateEstimate();
+    document.getElementById('homeHeading').textContent = state.generated ? 'Update the court' : 'Set the court';
+    document.getElementById('generateBtn').textContent = state.generated ? 'Regenerate Matches' : 'Generate Matches';
+    const banner = document.getElementById('homeBanner');
+    banner.innerHTML = '';
+    if(!storageAvailable){
+      const div = document.createElement('div');
+      div.className = 'banner banner-error';
+      div.textContent = 'This browser is blocking local storage, so results won\'t be saved across a refresh. Everything still works for this session.';
+      banner.appendChild(div);
+    }
+    if(state.generated){
+      const div = document.createElement('div');
+      div.className = 'banner banner-warning';
+      div.textContent = 'A schedule already exists. Regenerating will reshuffle pairings and clear all recorded results.';
+      banner.appendChild(div);
+    }
+  }
+
+  /* ─── RENDER MATCHES ─── */
+  function renderMatches(){
+    const container = document.getElementById('matchesContent');
+    container.innerHTML = '';
+    if(!state.generated || state.matches.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'banner-empty';
+      empty.innerHTML = `No matches yet. Head to <strong>Home</strong> to set up players, duration and format.`;
+      container.appendChild(empty);
+      return;
+    }
+    if(state.warning){
+      const warn = document.createElement('div');
+      warn.className = 'banner banner-warning';
+      warn.textContent = state.warning;
+      container.appendChild(warn);
+    }
+    const flat = state.matches;
+    const completed = flat.filter(m => m.winnerSide).length;
+    const totalTime = flat.length ? flat[flat.length-1].endMin : 0;
+    const pct = flat.length ? Math.round((completed/flat.length)*100) : 0;
+
+    const scoreboard = document.createElement('div');
+    scoreboard.className = 'scoreboard';
+    scoreboard.innerHTML = `
+      <div class="scoreboard__cell">
+        <div class="scoreboard__label">Format</div>
+        <div class="scoreboard__value" style="font-size:16px;text-transform:capitalize;">${state.config.format} · to ${state.config.gamePoint}</div>
+      </div>
+      <div class="scoreboard__cell">
+        <div class="scoreboard__label">Match length</div>
+        <div class="scoreboard__value">${state.matchMinutes} min</div>
+      </div>
+      <div class="scoreboard__cell">
+        <div class="scoreboard__label">Matches</div>
+        <div class="scoreboard__value">${completed}/${flat.length}</div>
+        <div class="scoreboard__bar"><div class="scoreboard__bar-fill" style="width:${pct}%;"></div></div>
+      </div>
+      <div class="scoreboard__cell">
+        <div class="scoreboard__label">Scheduled length</div>
+        <div class="scoreboard__value">${formatMinutes(totalTime)}</div>
+      </div>
+    `;
+    container.appendChild(scoreboard);
+
+    const grid = document.createElement('div');
+    grid.className = 'match-grid';
+    flat.forEach(match => grid.appendChild(renderMatchCard(match)));
+    container.appendChild(grid);
+  }
+
+  function renderMatchCard(match){
+    const card = document.createElement('div');
+    card.className = 'match-card' + (match.winnerSide ? ' decided' : '');
+    const meta = document.createElement('div');
+    meta.className = 'match-card__meta mono';
+    meta.innerHTML = `<span>${match.id.toUpperCase()}</span><span>${formatMinutes(match.startMin)}–${formatMinutes(match.endMin)}</span>`;
+    card.appendChild(meta);
+    const court = document.createElement('div');
+    court.className = 'match-card__court';
+    const sideA = document.createElement('div');
+    sideA.className = 'match-card__side' + (match.winnerSide === 'A' ? ' winner' : (match.winnerSide ? ' loser' : ''));
+    sideA.innerHTML = `<span class="match-card__side-name">${match.sideA.label}</span>`;
+    const net = document.createElement('div');
+    net.className = 'match-card__net';
+    const sideB = document.createElement('div');
+    sideB.className = 'match-card__side' + (match.winnerSide === 'B' ? ' winner' : (match.winnerSide ? ' loser' : ''));
+    sideB.innerHTML = `<span class="match-card__side-name">${match.sideB.label}</span>`;
+    court.appendChild(sideA); court.appendChild(net); court.appendChild(sideB);
+    card.appendChild(court);
+
+    const actions = document.createElement('div');
+    actions.className = 'match-card__actions';
+    const btnA = document.createElement('button');
+    btnA.className = 'match-card__win-btn' + (match.winnerSide === 'A' ? ' chosen' : '');
+    btnA.textContent = match.winnerSide ? (match.winnerSide === 'A' ? '✓ Winner' : match.sideA.label.split(' ')[0] + ' lost') : `${match.sideA.label} won`;
+    btnA.disabled = !!match.winnerSide;
+    btnA.addEventListener('click', () => setWinner(match.id, 'A'));
+    const btnB = document.createElement('button');
+    btnB.className = 'match-card__win-btn' + (match.winnerSide === 'B' ? ' chosen' : '');
+    btnB.textContent = match.winnerSide ? (match.winnerSide === 'B' ? '✓ Winner' : match.sideB.label.split(' ')[0] + ' lost') : `${match.sideB.label} won`;
+    btnB.disabled = !!match.winnerSide;
+    btnB.addEventListener('click', () => setWinner(match.id, 'B'));
+    actions.appendChild(btnA); actions.appendChild(btnB);
+    card.appendChild(actions);
+    return card;
+  }
+
+  function setWinner(matchId, side){
+    const match = state.matches.find(m => m.id === matchId);
+    if(match && !match.winnerSide){
+      match.winnerSide = side;
+      saveState();
+      renderMatches();
+      renderLeaderboard();
+    }
+  }
+
+  /* ─── RENDER LEADERBOARD ─── */
+  function computeLeaderboard(){
+    const stats = {};
+    state.players.forEach(p => { stats[p.id] = { name: p.name, wins:0, losses:0, played:0 }; });
+    state.matches.forEach(m => {
+      if(!m.winnerSide) return;
+      const winningIds = m.winnerSide === 'A' ? m.sideA.playerIds : m.sideB.playerIds;
+      const losingIds = m.winnerSide === 'A' ? m.sideB.playerIds : m.sideA.playerIds;
+      winningIds.forEach(id => { if(stats[id]){ stats[id].wins++; stats[id].played++; } });
+      losingIds.forEach(id => { if(stats[id]){ stats[id].losses++; stats[id].played++; } });
+    });
+    return Object.values(stats).sort((a,b) => b.wins - a.wins || a.losses - b.losses);
+  }
+
+  function renderLeaderboard(){
+    const container = document.getElementById('leaderboardContent');
+    container.innerHTML = '';
+    if(!state.generated || state.players.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'banner-empty';
+      empty.innerHTML = `No standings yet. Generate matches and record a few results first.`;
+      container.appendChild(empty);
+      return;
+    }
+    const standings = computeLeaderboard();
+    const table = document.createElement('table');
+    table.className = 'leaderboard-table';
+    table.innerHTML = `<thead><tr><th>#</th><th>Player</th><th>W</th><th>L</th><th>Played</th><th>Win %</th></tr></thead><tbody></tbody>`;
+    const tbody = table.querySelector('tbody');
+    standings.forEach((s, idx) => {
+      const pct = s.played ? Math.round((s.wins/s.played)*100) : 0;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="rank">${idx+1}</td><td>${s.name}</td><td>${s.wins}</td><td>${s.losses}</td><td>${s.played}</td><td class="win-pct">${s.played ? pct + '%' : '—'}</td>`;
+      tbody.appendChild(tr);
+    });
+    const wrap = document.createElement('div');
+    wrap.className = 'leaderboard-wrap';
+    wrap.appendChild(table);
+    container.appendChild(wrap);
+  }
+
+  /* ─── SHARE ─── */
+  function buildShareText(){
+    const date = new Date().toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' });
+    const standings = computeLeaderboard();
+    let text = `🏸 Match Results — ${date}\n\n`;
+    const medals = ['🥇','🥈','🥉'];
+    standings.forEach((s, i) => {
+      const medal = i < 3 ? medals[i] : `${i+1}.`;
+      text += `${medal} ${s.name} — ${s.wins}W, ${s.losses}L\n`;
+    });
+    const totalMatches = state.matches.filter(m => m.winnerSide).length;
+    text += `\nTotal Matches: ${totalMatches}`;
+    return text;
+  }
+
+  function shareResults(){
+    const text = buildShareText();
+    if(navigator.share){
+      navigator.share({ title: 'Badminton Results', text }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Results copied to clipboard! You can paste them into any chat app.');
+      }).catch(() => {
+        // fallback
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        try { document.execCommand('copy'); alert('Results copied to clipboard!'); } catch(e) { alert('Copy failed. Please copy the text manually.'); }
+        document.body.removeChild(textarea);
+      });
+    }
+  }
+
+  /* ─── VIEW SWITCHING ─── */
+  function setView(view){
+    state.currentView = view;
+    saveState();
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + view).classList.add('active');
+    document.querySelectorAll('.navbar__item[data-view]').forEach(btn => btn.classList.toggle('active', btn.dataset.view === view));
+    if(view === 'home') renderHome();
+    if(view === 'matches') renderMatches();
+    if(view === 'leaderboard') renderLeaderboard();
+    closeNav();
+  }
+
+  function renderAll(){ renderHome(); renderMatches(); renderLeaderboard(); }
+
+  /* ─── NAV ─── */
+  const navMenu = document.getElementById('navMenu');
+  const navToggle = document.getElementById('navToggle');
+  function closeNav(){ navMenu.classList.remove('open'); navToggle.setAttribute('aria-expanded','false'); }
+  navToggle.addEventListener('click', (e) => { e.stopPropagation(); const isOpen = navMenu.classList.toggle('open'); navToggle.setAttribute('aria-expanded', String(isOpen)); });
+  document.addEventListener('click', (e) => { if(!navMenu.contains(e.target)) closeNav(); });
+  document.querySelectorAll('.navbar__item[data-view]').forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.view)));
+
+  /* ─── RESET ─── */
+  document.getElementById('resetBtn').addEventListener('click', () => { closeNav(); if(confirm('Reset will permanently clear all players, matches and results. Continue?')) resetState(); });
+
+  /* ─── SHARE BUTTONS ─── */
+  document.getElementById('shareMatchesBtn').addEventListener('click', shareResults);
+  document.getElementById('shareLeaderboardBtn').addEventListener('click', shareResults);
+
+  /* ─── SETUP FORM ─── */
+  document.getElementById('numPlayers').addEventListener('input', () => { renderPlayerNameInputs(); document.getElementById('matchCount').dataset.userSet = '0'; updateEstimate(); });
+  document.getElementById('durationValue').addEventListener('input', updateEstimate);
+  document.getElementById('durationUnit').addEventListener('change', updateEstimate);
+  document.querySelectorAll('#formatSegmented button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#formatSegmented button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('matchCount').dataset.userSet = '0';
+      updateEstimate();
+    });
+  });
+  document.querySelectorAll('#gamePointSegmented button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#gamePointSegmented button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('matchCount').dataset.userSet = '0';
+      updateEstimate();
+    });
+  });
+  document.getElementById('matchCount').addEventListener('input', (e) => e.target.dataset.userSet = '1');
+
+  document.getElementById('setupForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const numPlayers = Number(document.getElementById('numPlayers').value);
+    const durationValue = Number(document.getElementById('durationValue').value);
+    const durationUnit = document.getElementById('durationUnit').value;
+    const format = getFormat();
+    const gamePoint = getGamePoint();
+    const matchCount = Number(document.getElementById('matchCount').value);
+    const banner = document.getElementById('homeBanner');
+    banner.innerHTML = '';
+    const errors = [];
+    if(!Number.isInteger(numPlayers) || numPlayers < 2) errors.push('Enter at least 2 players.');
+    if(format === 'doubles' && numPlayers < 4) errors.push('Doubles needs at least 4 players.');
+    if(!durationValue || durationValue <= 0) errors.push('Enter a total duration greater than 0.');
+    if(!matchCount || matchCount < 1) errors.push('Choose at least 1 match to schedule.');
+    if(errors.length){
+      const div = document.createElement('div');
+      div.className = 'banner banner-error';
+      div.innerHTML = errors.join('<br>');
+      banner.appendChild(div);
+      return;
+    }
+    if(state.generated){
+      if(!confirm('This will reshuffle pairings and clear all current results. Continue?')) return;
+    }
+    const nameInputs = Array.from(document.querySelectorAll('#playerNames input'));
+    const playerNames = nameInputs.map((inp, i) => inp.value.trim() || `Player ${i+1}`);
+    const players = playerNames.map((name, i) => ({ id: 'p'+(i+1), name }));
+    const config = { numPlayers, durationValue, durationUnit, format, gamePoint, matchCount };
+    const result = MatchEngine.generate(config, players);
+    state.config = config;
+    state.playerNames = playerNames;
+    state.players = players;
+    state.matches = result.matches;
+    state.matchMinutes = result.matchMinutes;
+    state.warning = result.warning;
+    state.generated = true;
+    saveState();
+    setView('matches');
+  });
+
+  /* ─── INIT ─── */
+  (function init(){ renderAll(); setView(state.currentView || 'home'); })();
+</script>
+</body>
+</html>
