@@ -455,7 +455,6 @@
     .match-summary-item:last-child { border-bottom: none; }
     .match-summary-item .teams { color: var(--text); }
     .match-summary-item .score { color: var(--accent); font-weight: 600; }
-    .match-summary-item .winner-badge { color: var(--accent); }
 
     @media (max-width:400px){
       .panel { padding: 16px; }
@@ -593,7 +592,7 @@
 
 <script>
   /* ─── STATE ─── */
-  const STORAGE_KEY = 'courtside_state_v10';
+  const STORAGE_KEY = 'courtside_state_v11';
   let storageAvailable = true;
 
   function defaultState(){
@@ -934,24 +933,34 @@
     return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
   }
 
-  /* ─── CORRECTED SCORING LOGIC ─── */
+  /* ─── CORRECTED WIN CONDITION ─── */
+  function checkWinCondition(scoreA, scoreB, gamePoint) {
+    // WIN condition: score >= gamePoint AND lead by 2
+    if (Math.abs(scoreA - scoreB) >= 2) {
+      // If both scores are at or above gamePoint, whoever is higher wins
+      if (scoreA >= gamePoint && scoreB >= gamePoint) {
+        return scoreA > scoreB ? 'A' : 'B';
+      }
+      // If scoreA is above gamePoint, A wins
+      if (scoreA > gamePoint) {
+        return 'A';
+      }
+      // If scoreB is above gamePoint, B wins
+      if (scoreB > gamePoint) {
+        return 'B';
+      }
+    }
+    return null;
+  }
+
   function getScoreStatus(scoreA, scoreB, gamePoint) {
-    if (scoreA > gamePoint || scoreB > gamePoint) {
-      if (Math.abs(scoreA - scoreB) >= 2) {
-        return { status: 'won', winner: scoreA > scoreB ? 'A' : 'B' };
-      }
+    // Check if match is already decided
+    const winner = checkWinCondition(scoreA, scoreB, gamePoint);
+    if (winner) {
+      return { status: 'won', winner: winner };
     }
-    if (scoreA >= gamePoint && scoreB >= gamePoint) {
-      if (Math.abs(scoreA - scoreB) >= 2) {
-        return { status: 'won', winner: scoreA > scoreB ? 'A' : 'B' };
-      }
-      if (scoreA === scoreB) {
-        return { status: 'deuce' };
-      }
-      if (Math.abs(scoreA - scoreB) === 1) {
-        return { status: 'advantage', leader: scoreA > scoreB ? 'A' : 'B' };
-      }
-    }
+    
+    // Check for deuce: both scores at gamePoint-1 or higher, and equal
     if (scoreA >= gamePoint - 1 && scoreB >= gamePoint - 1) {
       if (scoreA === scoreB) {
         return { status: 'deuce' };
@@ -960,37 +969,16 @@
         return { status: 'advantage', leader: scoreA > scoreB ? 'A' : 'B' };
       }
     }
+    
+    // Check for match point: one player at gamePoint-1, the other below gamePoint-1
     if (scoreA === gamePoint - 1 && scoreB < gamePoint - 1) {
       return { status: 'matchPoint', player: 'A' };
     }
     if (scoreB === gamePoint - 1 && scoreA < gamePoint - 1) {
       return { status: 'matchPoint', player: 'B' };
     }
+    
     return { status: 'normal' };
-  }
-
-  function checkWinCondition(scoreA, scoreB, gamePoint) {
-    if (scoreA > gamePoint || scoreB > gamePoint) {
-      if (Math.abs(scoreA - scoreB) >= 2) {
-        return scoreA > scoreB ? 'A' : 'B';
-      }
-    }
-    if (scoreA >= gamePoint && scoreB >= gamePoint) {
-      if (Math.abs(scoreA - scoreB) >= 2) {
-        return scoreA > scoreB ? 'A' : 'B';
-      }
-    }
-    if (scoreA >= gamePoint && scoreB < gamePoint) {
-      if (scoreA - scoreB >= 2) {
-        return 'A';
-      }
-    }
-    if (scoreB >= gamePoint && scoreA < gamePoint) {
-      if (scoreB - scoreA >= 2) {
-        return 'B';
-      }
-    }
-    return null;
   }
 
   // Auto-start timer function
@@ -999,7 +987,6 @@
       state.timers[matchId] = { running: false, elapsed: 0, startTime: null, finalElapsed: null, started: false };
     }
     const timer = state.timers[matchId];
-    // Only start if not already started and match is not decided
     const match = state.matches.find(m => m.id === matchId);
     if (!timer.started && !match.winnerSide) {
       timer.started = true;
@@ -1013,7 +1000,6 @@
     const match = state.matches.find(m => m.id === matchId);
     if (!match || match.winnerSide) return;
 
-    // Auto-start timer on first point
     ensureTimerStarted(matchId);
 
     if (!state.scores[matchId]) {
@@ -1076,12 +1062,10 @@
     const match = state.matches.find(m => m.id === matchId);
     if (!match || match.winnerSide) return;
 
-    // Auto-start timer on first point
     const currentScores = state.scores[matchId] || { sideA: 0, sideB: 0 };
     const numValue = parseInt(value);
     if (isNaN(numValue) || numValue < 0) return;
     
-    // Check if this is the first point being set (>0)
     if (numValue > 0 && currentScores.sideA === 0 && currentScores.sideB === 0) {
       ensureTimerStarted(matchId);
     }
@@ -1184,11 +1168,8 @@
       const winningTeam = isAWinner ? m.sideA : m.sideB;
       const losingTeam = isAWinner ? m.sideB : m.sideA;
       
-      // Format: Raj 🏆 Kaushik VS Udit & Yash
       const winningPlayers = winningTeam.label.split(' & ');
       const losingPlayers = losingTeam.label.split(' & ');
-      
-      // Add 🏆 between winning team players
       const winningLabel = winningPlayers.join(' 🏆 ');
       const losingLabel = losingPlayers.join(' & ');
       
@@ -1340,7 +1321,6 @@
     flat.forEach(match => grid.appendChild(renderMatchCard(match)));
     container.appendChild(grid);
 
-    // Timer update interval
     if (window._timerInterval) clearInterval(window._timerInterval);
     window._timerInterval = setInterval(() => {
       let hasRunning = false;
@@ -1490,17 +1470,21 @@
           ensureTimerStarted(match.id);
         }
 
+        // Check if A already has a legal win condition
         if (checkWinCondition(currentScores.sideA, currentScores.sideB, gamePoint) === 'A') {
           match.winnerSide = 'A';
         } else {
-          if (currentScores.sideB >= gamePoint - 1 && currentScores.sideB > currentScores.sideA) {
+          // Force A to win by setting score to the minimum winning score
+          // If B is at gamePoint or higher, A needs B's score + 2
+          if (currentScores.sideB >= gamePoint) {
             currentScores.sideA = currentScores.sideB + 2;
-          } else if (currentScores.sideA >= gamePoint - 1 && currentScores.sideB >= gamePoint - 1) {
-            currentScores.sideA = Math.max(currentScores.sideA, currentScores.sideB) + 2;
           } else {
+            // Otherwise A wins at gamePoint + 1
+            // But if B is at gamePoint - 1, A needs to win by 2, so gamePoint + 1
             currentScores.sideA = gamePoint + 1;
-            if (currentScores.sideB >= gamePoint) {
-              currentScores.sideA = Math.max(gamePoint + 1, currentScores.sideB + 2);
+            // Ensure lead of at least 2
+            if (currentScores.sideA - currentScores.sideB < 2) {
+              currentScores.sideA = currentScores.sideB + 2;
             }
           }
           state.scores[match.id] = currentScores;
@@ -1533,14 +1517,12 @@
         if (checkWinCondition(currentScores.sideA, currentScores.sideB, gamePoint) === 'B') {
           match.winnerSide = 'B';
         } else {
-          if (currentScores.sideA >= gamePoint - 1 && currentScores.sideA > currentScores.sideB) {
+          if (currentScores.sideA >= gamePoint) {
             currentScores.sideB = currentScores.sideA + 2;
-          } else if (currentScores.sideA >= gamePoint - 1 && currentScores.sideB >= gamePoint - 1) {
-            currentScores.sideB = Math.max(currentScores.sideA, currentScores.sideB) + 2;
           } else {
             currentScores.sideB = gamePoint + 1;
-            if (currentScores.sideA >= gamePoint) {
-              currentScores.sideB = Math.max(gamePoint + 1, currentScores.sideA + 2);
+            if (currentScores.sideB - currentScores.sideA < 2) {
+              currentScores.sideB = currentScores.sideA + 2;
             }
           }
           state.scores[match.id] = currentScores;
@@ -1633,7 +1615,6 @@
     wrap.appendChild(table);
     container.appendChild(wrap);
 
-    // Append Match Summary
     const summary = buildMatchSummary();
     if (summary) {
       const summaryDiv = document.createElement('div');
@@ -1678,7 +1659,6 @@
       text += `${medal} ${s.name} — ${s.wins}W, ${s.losses}L\n`;
     });
     
-    // Append match summary
     const summary = buildMatchSummary();
     if (summary) {
       text += summary;
