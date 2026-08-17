@@ -11,7 +11,23 @@ $env:GEMINI_API_KEY="your_gemini_api_key_here"
 mvn spring-boot:run
 ```
 
-Open `http://localhost:8080`.
+Open `http://localhost:8000`.
+
+## Docker
+
+Build the image:
+
+```powershell
+docker build -t badminton-match-scheduler .
+```
+
+Run the app:
+
+```powershell
+docker run --rm -p 8000:8000 -e GEMINI_API_KEY="your_gemini_api_key_here" badminton-match-scheduler
+```
+
+Open `http://localhost:8000`.
 
 ## AI Endpoint
 
