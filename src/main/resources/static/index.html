@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Courtside — Balanced Badminton Scheduler</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar__brand">
+    <span class="dot"></span>
+    <span class="navbar__title display">Courtside</span>
+  </div>
+  <div class="navbar__controls">
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle dark/light theme" title="Toggle theme">🌙</button>
+    <div class="navbar__menu" id="navMenu">
+      <button class="navbar__toggle" id="navToggle" aria-haspopup="true" aria-expanded="false">
+        Menu <span class="navbar__caret">▾</span>
+      </button>
+      <div class="navbar__dropdown" role="menu">
+        <button class="navbar__item" data-view="home" role="menuitem">Home</button>
+        <button class="navbar__item" data-view="matches" role="menuitem">Matches</button>
+        <button class="navbar__item" data-view="leaderboard" role="menuitem">Leaderboard</button>
+        <button class="navbar__item danger" id="resetBtn" role="menuitem">Reset</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <!-- HOME -->
+  <section class="view" id="view-home">
+    <div class="hero">
+      <div class="hero__eyebrow">Balanced Match Scheduler</div>
+      <h1 id="homeHeading">Fair 2v2 Schedule</h1>
+      <p>Enter your players and total time. The system will generate the most balanced schedule possible — equal matches, fair rest, varied opponents and partners.</p>
+    </div>
+    <div id="homeBanner"></div>
+
+    <section class="panel ai-prompt-panel" aria-labelledby="aiPromptTitle">
+      <div class="panel__title" id="aiPromptTitle">AI schedule prompt</div>
+      <div class="field">
+        <label for="schedulePrompt">Describe your session</label>
+        <textarea id="schedulePrompt" rows="4" placeholder="Example: 8 players, 90 minutes, 15-point games, schedule 10 matches. Names: Raj, Amit, Neha, Priya, Sam, Kiran, Dev, Maya."></textarea>
+        <span class="field-hint">The AI fills the setup fields, then the balanced scheduler generates the matches.</span>
+      </div>
+      <div class="section-actions">
+        <button type="button" class="btn btn-primary" id="generateFromPromptBtn">Generate From Prompt</button>
+      </div>
+    </section>
+
+    <form class="panel" id="setupForm">
+      <div class="panel__title">Tournament setup</div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="numPlayers">Number of players</label>
+          <input type="number" id="numPlayers" min="4" max="40" step="1" value="6" required>
+          <span class="field-hint">Minimum 4 players for doubles</span>
+        </div>
+        <div class="field">
+          <label for="durationValue">Total duration</label>
+          <div class="duration-combo">
+            <input type="number" id="durationValue" min="1" step="1" value="2" required>
+            <select id="durationUnit">
+              <option value="hrs" selected>Hours</option>
+              <option value="min">Minutes</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom:18px;">
+        <label>Game point</label>
+        <div class="segmented" id="gamePointSegmented">
+          <button type="button" data-point="21" class="active">21 pts</button>
+          <button type="button" data-point="15">15 pts</button>
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom:18px;">
+        <label>Player names <span class="field-hint">(optional — defaults to Player N)</span></label>
+        <div class="player-names" id="playerNames"></div>
+      </div>
+
+      <div class="field" style="margin-bottom:18px;">
+        <label for="matchCount">Number of matches to schedule</label>
+        <input type="number" id="matchCount" min="1" step="1" value="6">
+        <span class="field-hint" id="matchCountHint">Balanced schedule ensures equal participation</span>
+      </div>
+
+      <div class="section-actions">
+        <button type="submit" class="btn btn-primary" id="generateBtn">Generate Balanced Schedule</button>
+      </div>
+    </form>
+
+    <div class="bottom-nav">
+      <button class="btn btn-ghost" onclick="setView('matches')">Matches</button>
+      <button class="btn btn-ghost" onclick="setView('leaderboard')">Leaderboard</button>
+    </div>
+  </section>
+
+  <!-- MATCHES -->
+  <section class="view" id="view-matches">
+    <div class="hero">
+      <div class="hero__eyebrow">Schedule</div>
+      <h1>Balanced Matches</h1>
+    </div>
+    <div id="matchesContent"></div>
+
+    <div class="bottom-nav">
+      <button class="btn btn-ghost" onclick="setView('home')">Home</button>
+      <button class="btn btn-ghost" onclick="setView('leaderboard')">Leaderboard</button>
+      <button class="share-btn" id="shareMatchesBtn">📤 Share</button>
+    </div>
+  </section>
+
+  <!-- LEADERBOARD -->
+  <section class="view" id="view-leaderboard">
+    <div class="hero">
+      <div class="hero__eyebrow">Standings</div>
+      <h1>Leaderboard</h1>
+    </div>
+    <div id="leaderboardContent"></div>
+
+    <div class="bottom-nav">
+      <button class="btn btn-ghost" onclick="setView('home')">Home</button>
+      <button class="btn btn-ghost" onclick="setView('matches')">Matches</button>
+      <button class="share-btn" id="shareLeaderboardBtn">📤 Share</button>
+    </div>
+  </section>
+</main>
+
+<script src="script.js"></script>
+</body>
+</html>
