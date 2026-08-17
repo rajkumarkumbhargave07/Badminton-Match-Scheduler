@@ -83,8 +83,7 @@ public class LlmClient {
 
     try {
       JsonNode response = restClient.post()
-          .uri("/models/{model}:generateContent", properties.model())
-          .header("x-goog-api-key", properties.apiKey())
+          .uri("/models/{model}:generateContent?key={apiKey}", properties.model(), properties.apiKey())
           .body(body)
           .retrieve()
           .body(JsonNode.class);
