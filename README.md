@@ -51,6 +51,8 @@ The API key stays on the Spring Boot server. Do not put it in frontend JavaScrip
 Environment variables:
 
 - `GEMINI_API_KEY`: required for AI calls
-- `LLM_MODEL`: defaults to `gemini-3.5-flash`
-- `LLM_BASE_URL`: defaults to `https://generativelanguage.googleapis.com/v1beta`
+- `GEMINI_MODEL`: defaults to `gemini-3.5-flash-lite`
+- `GEMINI_BASE_URL`: defaults to `https://generativelanguage.googleapis.com/v1beta`
+- `LLM_MODEL`: optional legacy alias for `GEMINI_MODEL`
+- `LLM_BASE_URL`: optional legacy alias for `GEMINI_BASE_URL`
 - `APP_CORS_ALLOWED_ORIGINS`: comma-separated allowed frontend origins
