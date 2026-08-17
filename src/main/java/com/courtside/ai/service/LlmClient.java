@@ -9,6 +9,7 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -55,11 +56,11 @@ public class LlmClient {
         ? Map.of(
             "maxOutputTokens", 500,
             "responseMimeType", "application/json",
-            "thinkingConfig", Map.of("thinkingLevel", "LOW")
+            "thinkingConfig", Map.of("thinkingLevel", "low")
         )
         : Map.of(
             "maxOutputTokens", 500,
-            "thinkingConfig", Map.of("thinkingLevel", "LOW")
+            "thinkingConfig", Map.of("thinkingLevel", "low")
         );
 
     Map<String, Object> body = Map.of(
@@ -91,9 +92,19 @@ public class LlmClient {
       return extractText(response);
     } catch (ResponseStatusException e) {
       throw e;
+    } catch (RestClientResponseException e) {
+      throw new ResponseStatusException(BAD_GATEWAY, "Gemini API error: " + trim(e.getResponseBodyAsString()), e);
     } catch (Exception e) {
       throw new ResponseStatusException(BAD_GATEWAY, "LLM request failed.", e);
     }
+  }
+
+  private String trim(String value) {
+    if (value == null || value.isBlank()) {
+      return "No response body.";
+    }
+    String compact = value.replaceAll("\\s+", " ").trim();
+    return compact.length() > 500 ? compact.substring(0, 500) + "..." : compact;
   }
 
   private JdkClientHttpRequestFactory requestFactory(int timeoutSeconds) {
