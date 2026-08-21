@@ -48,13 +48,18 @@ public class LlmClient {
   }
 
   private String generate(String prompt, String systemInstruction, boolean jsonResponse) {
-    if (properties.apiKey() == null || properties.apiKey().isBlank()) {
-      throw new ResponseStatusException(SERVICE_UNAVAILABLE, "GEMINI_API_KEY is not configured on the server.");
+    String apiKey = normalize(properties.apiKey());
+
+    if (apiKey.isBlank()) {
+      throw new ResponseStatusException(
+          SERVICE_UNAVAILABLE,
+          "GEMINI_API_KEY is not configured on the server."
+      );
     }
 
     Map<String, Object> generationConfig = jsonResponse
         ? Map.of(
-            "maxOutputTokens", 500,
+            "maxOutputTokens", 8192,
             "responseMimeType", "application/json",
             "thinkingConfig", Map.of("thinkingLevel", "low")
         )
@@ -82,11 +87,12 @@ public class LlmClient {
     );
 
     try {
-      JsonNode response = restClient.post()
+      RestClient.RequestBodySpec request = restClient.post()
           .uri("/models/{model}:generateContent", properties.model())
-          .header("X-goog-api-key", properties.apiKey())
-          .body(body)
-          .retrieve()
+          .header("X-goog-api-key", apiKey)
+          .body(body);
+
+      JsonNode response = request.retrieve()
           .body(JsonNode.class);
 
       return extractText(response);
@@ -105,6 +111,10 @@ public class LlmClient {
     }
     String compact = value.replaceAll("\\s+", " ").trim();
     return compact.length() > 500 ? compact.substring(0, 500) + "..." : compact;
+  }
+
+  private String normalize(String value) {
+    return value == null ? "" : value.trim();
   }
 
   private JdkClientHttpRequestFactory requestFactory(int timeoutSeconds) {

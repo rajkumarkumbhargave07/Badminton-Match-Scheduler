@@ -1207,7 +1207,8 @@ async function generateFromPrompt(){
     }
 
     applySchedulePromptConfig(body);
-    generateScheduleFromForm();
+    saveGeneratedSchedule(body);
+    setView('matches');
   } catch(error) {
     showHomeBanner(error.message || 'Could not generate from prompt.', 'error');
   } finally {
@@ -1216,7 +1217,7 @@ async function generateFromPrompt(){
   }
 }
 
-function generateScheduleFromForm(){
+async function generateScheduleFromForm(){
   const numPlayers = Number(document.getElementById('numPlayers').value);
   const durationValue = Number(document.getElementById('durationValue').value);
   const durationUnit = document.getElementById('durationUnit').value;
@@ -1242,26 +1243,111 @@ function generateScheduleFromForm(){
     if(!confirm('This will reshuffle pairings and clear results. Continue?')) return;
   }
 
+  const generateBtn = document.getElementById('generateBtn');
+  const originalText = generateBtn.textContent;
+  generateBtn.disabled = true;
+  generateBtn.textContent = 'Generating...';
+  showHomeBanner('Generating the schedule with AI...', 'warning');
+
   const nameInputs = Array.from(document.querySelectorAll('#playerNames input'));
   const playerNames = nameInputs.map((inp, i) => inp.value.trim() || `Player ${i+1}`);
-  const players = playerNames.map((name, i) => ({ id: 'p'+(i+1), name }));
-
   const config = { numPlayers, durationValue, durationUnit, gamePoint, matchCount };
-  const result = MatchEngine.generateBalanced(config, players);
 
-  state.config = config;
+  try {
+    const response = await fetch('/api/ai/schedule-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: `Generate a balanced doubles badminton schedule for ${numPlayers} players, ${durationValue} ${durationUnit}, ${gamePoint}-point games, and ${matchCount} matches. Use these player names: ${playerNames.join(', ')}.`,
+        currentConfig: config,
+        currentPlayerNames: playerNames
+      })
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if(!response.ok){
+      throw new Error(body.error || 'AI schedule generation failed.');
+    }
+
+    applySchedulePromptConfig(body);
+    saveGeneratedSchedule(body);
+    setView('matches');
+  } catch(error) {
+    showHomeBanner(error.message || 'Could not generate schedule with AI.', 'error');
+  } finally {
+    generateBtn.disabled = false;
+    generateBtn.textContent = originalText;
+  }
+}
+
+function saveGeneratedSchedule(config){
+  const numPlayers = Math.max(4, Math.min(40, Number(config.numPlayers) || 6));
+  const playerNames = Array.isArray(config.playerNames) && config.playerNames.length
+    ? config.playerNames.slice(0, numPlayers)
+    : Array.from({ length: numPlayers }, (_, i) => `Player ${i+1}`);
+  while(playerNames.length < numPlayers) playerNames.push(`Player ${playerNames.length + 1}`);
+
+  const players = playerNames.map((name, i) => ({ id: 'p'+(i+1), name }));
+  const matches = normalizeAiMatches(config.matches, players);
+  if(matches.length === 0){
+    throw new Error('AI did not return any matches.');
+  }
+
+  state.config = {
+    numPlayers,
+    durationValue: Math.max(1, Number(config.durationValue) || 2),
+    durationUnit: config.durationUnit === 'min' ? 'min' : 'hrs',
+    gamePoint: Number(config.gamePoint) === 15 ? 15 : 21,
+    matchCount: Math.max(1, Number(config.matchCount) || matches.length)
+  };
   state.playerNames = playerNames;
   state.players = players;
-  state.matches = result.matches;
-  state.matchMinutes = result.matchMinutes;
-  state.warning = result.warning;
+  state.matches = matches;
+  state.matchMinutes = Math.max(1, Number(config.matchMinutes) || estimateAiMatchMinutes(matches));
+  state.warning = config.warning || null;
   state.generated = true;
-  state.balanceStats = result.balanceStats;
+  state.balanceStats = config.balanceStats || null;
   state.scores = {};
   state.timers = {};
-
   saveState();
-  setView('matches');
+}
+
+function normalizeAiMatches(matches, players){
+  if(!Array.isArray(matches)) return [];
+  const playerById = Object.fromEntries(players.map(p => [p.id, p]));
+
+  return matches.map((match, index) => {
+    const sideAIds = normalizePlayerIds(match?.sideA?.playerIds, playerById).slice(0, 2);
+    const sideBIds = normalizePlayerIds(match?.sideB?.playerIds, playerById)
+      .filter(id => !sideAIds.includes(id))
+      .slice(0, 2);
+
+    if(sideAIds.length !== 2 || sideBIds.length !== 2) return null;
+
+    return {
+      id: match.id || `m${index + 1}`,
+      sideA: { playerIds: sideAIds, label: labelForIds(sideAIds, playerById, match?.sideA?.label) },
+      sideB: { playerIds: sideBIds, label: labelForIds(sideBIds, playerById, match?.sideB?.label) },
+      winnerSide: null,
+      startMin: Number.isFinite(Number(match.startMin)) ? Number(match.startMin) : index * 15,
+      endMin: Number.isFinite(Number(match.endMin)) ? Number(match.endMin) : (index + 1) * 15
+    };
+  }).filter(Boolean);
+}
+
+function normalizePlayerIds(ids, playerById){
+  if(!Array.isArray(ids)) return [];
+  return ids.map(String).filter(id => playerById[id]);
+}
+
+function labelForIds(ids, playerById, fallback){
+  const label = ids.map(id => playerById[id]?.name).filter(Boolean).join(' & ');
+  return label || fallback || ids.join(' & ');
+}
+
+function estimateAiMatchMinutes(matches){
+  const first = matches.find(match => Number.isFinite(Number(match.endMin)) && Number.isFinite(Number(match.startMin)));
+  return first ? Math.max(1, Number(first.endMin) - Number(first.startMin)) : 15;
 }
 
 document.getElementById('generateFromPromptBtn').addEventListener('click', generateFromPrompt);

@@ -1,5 +1,7 @@
 package com.courtside.ai.dto;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import java.util.List;
 
 public record SchedulePromptResponse(
@@ -8,7 +10,11 @@ public record SchedulePromptResponse(
     String durationUnit,
     Integer gamePoint,
     Integer matchCount,
+    Integer matchMinutes,
     List<String> playerNames,
+    JsonNode matches,
+    JsonNode balanceStats,
+    String warning,
     String note
 ) {
 }

@@ -39,6 +39,12 @@ public class SchedulePromptService {
         - gamePoint must be 15 or 21.
         - matchCount must be a positive integer from 1 to 50.
         - playerNames should contain only explicit names from the user, or fallback names if already present.
+        - Generate the requested doubles matches in the matches array.
+        - Use player IDs p1, p2, p3, etc. in the same order as playerNames.
+        - Each match must have exactly 2 players on sideA and exactly 2 players on sideB.
+        - Balance total matches per player, rest, partner variety, and opponent variety as evenly as possible.
+        - matchMinutes should fit the total duration across all matches with about 3 minutes transition between matches.
+        - startMin and endMin are minute offsets from session start.
         - If a value is missing, use the current config.
         - If still unknown, use: 6 players, 2 hrs, 21 points, 6 matches.
         - Return no markdown and no explanation outside JSON.
@@ -50,7 +56,27 @@ public class SchedulePromptService {
           "durationUnit": "hrs",
           "gamePoint": 21,
           "matchCount": 6,
-          "playerNames": ["Raj", "Amit"],
+          "matchMinutes": 15,
+          "playerNames": ["Raj", "Udit"],
+          "matches": [
+            {
+              "id": "m1",
+              "sideA": { "playerIds": ["p1", "p2"], "label": "Raj & Udit" },
+              "sideB": { "playerIds": ["p3", "p4"], "label": "Player 3 & Player 4" },
+              "winnerSide": null,
+              "startMin": 0,
+              "endMin": 15
+            }
+          ],
+          "balanceStats": {
+            "totalMatches": 6,
+            "minMatches": 4,
+            "maxMatches": 4,
+            "minRest": 0,
+            "maxRest": 1,
+            "perfectBalance": true
+          },
+          "warning": null,
           "note": "Brief note about assumptions."
         }
 
@@ -90,7 +116,11 @@ public class SchedulePromptService {
           textOrNull(root.get("durationUnit")),
           intOrNull(root.get("gamePoint")),
           intOrNull(root.get("matchCount")),
+          intOrNull(root.get("matchMinutes")),
           playerNames,
+          root.get("matches"),
+          root.get("balanceStats"),
+          textOrNull(root.get("warning")),
           textOrNull(root.get("note"))
       );
     } catch (Exception e) {
@@ -104,6 +134,7 @@ public class SchedulePromptService {
     String durationUnit = "min".equals(response.durationUnit()) ? "min" : "hrs";
     int gamePoint = response.gamePoint() != null && response.gamePoint() == 15 ? 15 : 21;
     int matchCount = clamp(defaultInt(response.matchCount(), 6), 1, 50);
+    int matchMinutes = clamp(defaultInt(response.matchMinutes(), 15), 1, 24 * 60);
 
     List<String> names = response.playerNames() == null ? List.of() : response.playerNames().stream()
         .filter(name -> name != null && !name.isBlank())
@@ -117,7 +148,11 @@ public class SchedulePromptService {
         durationUnit,
         gamePoint,
         matchCount,
+        matchMinutes,
         names,
+        response.matches(),
+        response.balanceStats(),
+        response.warning(),
         response.note()
     );
   }
