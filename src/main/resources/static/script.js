@@ -1,10 +1,10 @@
 /* ─── STATE ─── */
-const STORAGE_KEY = 'courtside_state_v11';
+const STORAGE_KEY = 'courtside_state_v12';
 let storageAvailable = true;
 
 function defaultState(){
   return {
-    config: { numPlayers: 6, durationValue: 2, durationUnit: 'hrs', gamePoint: 21, matchCount: null },
+    config: { numPlayers: 6, durationValue: 2, durationUnit: 'hrs', gamePoint: 15, matchCount: null },
     playerNames: [],
     players: [],
     matches: [],
@@ -38,11 +38,16 @@ function toggleTheme(){
 }
 
 function loadState(){
-  try { const raw = localStorage.getItem(STORAGE_KEY); if(!raw) return defaultState(); return Object.assign(defaultState(), JSON.parse(raw)); }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultState();
+    return Object.assign(defaultState(), JSON.parse(raw));
+  }
   catch(e){ storageAvailable = false; return defaultState(); }
 }
 
 let state = loadState();
+let pendingWinCelebration = null;
 
 function saveState(){
   if(!storageAvailable) return;
@@ -343,19 +348,11 @@ function formatTimer(seconds){
 /* ─── CORRECTED WIN CONDITION ─── */
 function checkWinCondition(scoreA, scoreB, gamePoint) {
   // WIN condition: score >= gamePoint AND lead by 2
-  if (Math.abs(scoreA - scoreB) >= 2) {
-    // If both scores are at or above gamePoint, whoever is higher wins
-    if (scoreA >= gamePoint && scoreB >= gamePoint) {
-      return scoreA > scoreB ? 'A' : 'B';
-    }
-    // If scoreA is above gamePoint, A wins
-    if (scoreA > gamePoint) {
-      return 'A';
-    }
-    // If scoreB is above gamePoint, B wins
-    if (scoreB > gamePoint) {
-      return 'B';
-    }
+  if (scoreA > gamePoint && scoreA - scoreB >= 2) {
+    return 'A';
+  }
+  if (scoreB > gamePoint && scoreB - scoreA >= 2) {
+    return 'B';
   }
   return null;
 }
@@ -405,35 +402,24 @@ function ensureTimerStarted(matchId) {
 
 function incrementScore(matchId, side) {
   const match = state.matches.find(m => m.id === matchId);
-  if (!match || match.winnerSide) return;
+  if (!match) return;
 
-  ensureTimerStarted(matchId);
+  if (!match.winnerSide) {
+    ensureTimerStarted(matchId);
+  }
 
   if (!state.scores[matchId]) {
     state.scores[matchId] = { sideA: 0, sideB: 0 };
   }
 
   const scores = state.scores[matchId];
-  const gamePoint = state.config.gamePoint;
-
   if (side === 'A') {
     scores.sideA++;
   } else {
     scores.sideB++;
   }
 
-  const winner = checkWinCondition(scores.sideA, scores.sideB, gamePoint);
-  if (winner) {
-    match.winnerSide = winner;
-    if (state.timers[matchId]) {
-      const currentElapsed = getTimerElapsed(matchId);
-      if (state.timers[matchId].running) {
-        state.timers[matchId].running = false;
-      }
-      state.timers[matchId].finalElapsed = currentElapsed;
-      state.timers[matchId].elapsed = currentElapsed;
-    }
-  }
+  applyScoreResult(matchId);
 
   saveState();
   renderMatches();
@@ -442,7 +428,7 @@ function incrementScore(matchId, side) {
 
 function decrementScore(matchId, side) {
   const match = state.matches.find(m => m.id === matchId);
-  if (!match || match.winnerSide) return;
+  if (!match) return;
 
   if (!state.scores[matchId]) {
     state.scores[matchId] = { sideA: 0, sideB: 0 };
@@ -455,10 +441,7 @@ function decrementScore(matchId, side) {
     scores.sideB--;
   }
 
-  match.winnerSide = null;
-  if (state.timers[matchId]) {
-    state.timers[matchId].finalElapsed = null;
-  }
+  applyScoreResult(matchId);
 
   saveState();
   renderMatches();
@@ -467,7 +450,7 @@ function decrementScore(matchId, side) {
 
 function updateScoreDirect(matchId, side, value) {
   const match = state.matches.find(m => m.id === matchId);
-  if (!match || match.winnerSide) return;
+  if (!match) return;
 
   const currentScores = state.scores[matchId] || { sideA: 0, sideB: 0 };
   const numValue = parseInt(value);
@@ -488,28 +471,35 @@ function updateScoreDirect(matchId, side, value) {
     scores.sideB = numValue;
   }
 
-  const gamePoint = state.config.gamePoint;
-  const winner = checkWinCondition(scores.sideA, scores.sideB, gamePoint);
-  if (winner) {
-    match.winnerSide = winner;
-    if (state.timers[matchId]) {
-      const currentElapsed = getTimerElapsed(matchId);
-      if (state.timers[matchId].running) {
-        state.timers[matchId].running = false;
-      }
-      state.timers[matchId].finalElapsed = currentElapsed;
-      state.timers[matchId].elapsed = currentElapsed;
-    }
-  } else {
-    match.winnerSide = null;
-    if (state.timers[matchId]) {
-      state.timers[matchId].finalElapsed = null;
-    }
-  }
+  applyScoreResult(matchId);
 
   saveState();
   renderMatches();
   renderLeaderboard();
+}
+
+function applyScoreResult(matchId) {
+  const match = state.matches.find(m => m.id === matchId);
+  if (!match) return;
+
+  const scores = state.scores[matchId] || { sideA: 0, sideB: 0 };
+  const previousWinner = match.winnerSide;
+  const winner = checkWinCondition(scores.sideA, scores.sideB, state.config.gamePoint);
+  match.winnerSide = winner;
+
+  if (winner && !previousWinner && state.timers[matchId]) {
+    const currentElapsed = getTimerElapsed(matchId);
+    state.timers[matchId].running = false;
+    state.timers[matchId].finalElapsed = currentElapsed;
+    state.timers[matchId].elapsed = currentElapsed;
+  }
+  if (winner && !previousWinner) {
+    pendingWinCelebration = matchId;
+  }
+
+  if (!winner && state.timers[matchId]) {
+    state.timers[matchId].finalElapsed = null;
+  }
 }
 
 /* ─── TIMER FUNCTIONS ─── */
@@ -714,6 +704,12 @@ function renderMatches(){
   flat.forEach(match => grid.appendChild(renderMatchCard(match)));
   container.appendChild(grid);
 
+  if (pendingWinCelebration) {
+    const celebrationCard = grid.querySelector(`[data-match-id="${pendingWinCelebration}"]`);
+    pendingWinCelebration = null;
+    if (celebrationCard) playWinCelebration(celebrationCard);
+  }
+
   if (window._timerInterval) clearInterval(window._timerInterval);
   window._timerInterval = setInterval(() => {
     let hasRunning = false;
@@ -738,6 +734,7 @@ function renderMatches(){
 function renderMatchCard(match){
   const card = document.createElement('div');
   card.className = 'match-card' + (match.winnerSide ? ' decided' : '');
+  card.dataset.matchId = match.id;
   
   const meta = document.createElement('div');
   meta.className = 'match-card__meta mono';
@@ -781,27 +778,46 @@ function renderMatchCard(match){
   const scores = state.scores[match.id] || { sideA: 0, sideB: 0 };
   const winner = match.winnerSide;
 
+  const teamA = document.createElement('div');
+  teamA.className = 'match-card__team';
+
   const sideA = document.createElement('div');
   sideA.className = 'match-card__side' + (winner === 'A' ? ' winner' : (winner ? ' loser' : ''));
-  if (!winner) {
-    sideA.addEventListener('click', (e) => {
-      if (e.target.tagName === 'INPUT') return;
-      incrementScore(match.id, 'A');
-    });
-  }
   
   const scoreClassA = getScoreClass('A', scores.sideA, scores.sideB, gamePoint);
   sideA.innerHTML = `
     <span class="match-card__side-name">${match.sideA.label}</span>
     <span class="match-card__side-label">Team A</span>
-    <input class="match-card__score ${scoreClassA} ${winner ? 'locked' : ''}" 
+    <input class="match-card__score ${scoreClassA}" 
           type="number" 
           value="${scores.sideA}" 
           min="0" 
-          data-match="${match.id}" data-side="A"
-          ${winner ? 'readonly' : ''}
-          ${!winner ? 'style="cursor:text;"' : ''}>
+          data-match="${match.id}" data-side="A">
   `;
+  const scoreControlsA = document.createElement('div');
+  scoreControlsA.className = 'match-card__score-controls';
+  scoreControlsA.innerHTML = `
+    <button class="match-card__score-btn" type="button" aria-label="Decrease Team A score">-</button>
+    <button class="match-card__score-btn" type="button" aria-label="Increase Team A score">+</button>
+  `;
+  teamA.appendChild(sideA);
+  teamA.appendChild(scoreControlsA);
+  if (winner) {
+    const statusA = document.createElement('div');
+    statusA.className = 'match-card__status ' + (winner === 'A' ? 'winner' : 'loser');
+    statusA.textContent = winner === 'A' ? '🏆 WIN' : 'LOSE';
+    teamA.appendChild(statusA);
+  }
+
+  const scoreButtonsA = scoreControlsA.querySelectorAll('.match-card__score-btn');
+  scoreButtonsA[0].addEventListener('click', (e) => {
+    e.stopPropagation();
+    decrementScore(match.id, 'A');
+  });
+  scoreButtonsA[1].addEventListener('click', (e) => {
+    e.stopPropagation();
+    incrementScore(match.id, 'A');
+  });
   const scoreInputA = sideA.querySelector('.match-card__score');
   scoreInputA.addEventListener('change', (e) => {
     updateScoreDirect(match.id, 'A', e.target.value);
@@ -811,135 +827,79 @@ function renderMatchCard(match){
   const net = document.createElement('div');
   net.className = 'match-card__net';
 
+  const teamB = document.createElement('div');
+  teamB.className = 'match-card__team';
+
   const sideB = document.createElement('div');
   sideB.className = 'match-card__side' + (winner === 'B' ? ' winner' : (winner ? ' loser' : ''));
-  if (!winner) {
-    sideB.addEventListener('click', (e) => {
-      if (e.target.tagName === 'INPUT') return;
-      incrementScore(match.id, 'B');
-    });
-  }
   
   const scoreClassB = getScoreClass('B', scores.sideB, scores.sideA, gamePoint);
   sideB.innerHTML = `
     <span class="match-card__side-name">${match.sideB.label}</span>
     <span class="match-card__side-label">Team B</span>
-    <input class="match-card__score ${scoreClassB} ${winner ? 'locked' : ''}" 
+    <input class="match-card__score ${scoreClassB}" 
           type="number" 
           value="${scores.sideB}" 
           min="0" 
-          data-match="${match.id}" data-side="B"
-          ${winner ? 'readonly' : ''}
-          ${!winner ? 'style="cursor:text;"' : ''}>
+          data-match="${match.id}" data-side="B">
   `;
+  const scoreControlsB = document.createElement('div');
+  scoreControlsB.className = 'match-card__score-controls';
+  scoreControlsB.innerHTML = `
+    <button class="match-card__score-btn" type="button" aria-label="Decrease Team B score">-</button>
+    <button class="match-card__score-btn" type="button" aria-label="Increase Team B score">+</button>
+  `;
+  teamB.appendChild(sideB);
+  teamB.appendChild(scoreControlsB);
+  if (winner) {
+    const statusB = document.createElement('div');
+    statusB.className = 'match-card__status ' + (winner === 'B' ? 'winner' : 'loser');
+    statusB.textContent = winner === 'B' ? '🏆 WIN' : 'LOSE';
+    teamB.appendChild(statusB);
+  }
+
+  const scoreButtonsB = scoreControlsB.querySelectorAll('.match-card__score-btn');
+  scoreButtonsB[0].addEventListener('click', (e) => {
+    e.stopPropagation();
+    decrementScore(match.id, 'B');
+  });
+  scoreButtonsB[1].addEventListener('click', (e) => {
+    e.stopPropagation();
+    incrementScore(match.id, 'B');
+  });
   const scoreInputB = sideB.querySelector('.match-card__score');
   scoreInputB.addEventListener('change', (e) => {
     updateScoreDirect(match.id, 'B', e.target.value);
   });
   scoreInputB.addEventListener('click', (e) => e.stopPropagation());
 
-  court.appendChild(sideA);
+  court.appendChild(teamA);
   court.appendChild(net);
-  court.appendChild(sideB);
+  court.appendChild(teamB);
   card.appendChild(court);
 
-  const actions = document.createElement('div');
-  actions.className = 'match-card__actions';
 
-  if (winner) {
-    const winnerLabel = document.createElement('span');
-    winnerLabel.style.cssText = 'padding: 10px 14px; color: var(--accent); font-size: 13px; font-weight: 600; flex: 1;';
-    winnerLabel.textContent = `🏸 ${winner === 'A' ? match.sideA.label : match.sideB.label} won!`;
-    actions.appendChild(winnerLabel);
-  } else {
-    const btnA = document.createElement('button');
-    btnA.className = 'btn btn-ghost btn-sm';
-    btnA.textContent = `🏸 ${match.sideA.label.split(' & ')[0]} wins`;
-    btnA.addEventListener('click', () => {
-      const currentScores = state.scores[match.id] || { sideA: 0, sideB: 0 };
-      const gamePoint = state.config.gamePoint;
-      
-      if (currentScores.sideA === 0 && currentScores.sideB === 0) {
-        ensureTimerStarted(match.id);
-      }
+  return card;
+}
 
-      // Check if A already has a legal win condition
-      if (checkWinCondition(currentScores.sideA, currentScores.sideB, gamePoint) === 'A') {
-        match.winnerSide = 'A';
-      } else {
-        // Force A to win by setting score to the minimum winning score
-        // If B is at gamePoint or higher, A needs B's score + 2
-        if (currentScores.sideB >= gamePoint) {
-          currentScores.sideA = currentScores.sideB + 2;
-        } else {
-          // Otherwise A wins at gamePoint + 1
-          // But if B is at gamePoint - 1, A needs to win by 2, so gamePoint + 1
-          currentScores.sideA = gamePoint + 1;
-          // Ensure lead of at least 2
-          if (currentScores.sideA - currentScores.sideB < 2) {
-            currentScores.sideA = currentScores.sideB + 2;
-          }
-        }
-        state.scores[match.id] = currentScores;
-        match.winnerSide = 'A';
-      }
-      if (state.timers[match.id]) {
-        const currentElapsed = getTimerElapsed(match.id);
-        if (state.timers[match.id].running) {
-          state.timers[match.id].running = false;
-        }
-        state.timers[match.id].finalElapsed = currentElapsed;
-        state.timers[match.id].elapsed = currentElapsed;
-      }
-      saveState();
-      renderMatches();
-      renderLeaderboard();
-    });
+function playWinCelebration(card) {
+  const celebration = document.createElement('div');
+  celebration.className = 'win-celebration';
+  celebration.innerHTML = '<span class="win-celebration__popper" aria-hidden="true">🎉</span>';
 
-    const btnB = document.createElement('button');
-    btnB.className = 'btn btn-ghost btn-sm';
-    btnB.textContent = `🏸 ${match.sideB.label.split(' & ')[0]} wins`;
-    btnB.addEventListener('click', () => {
-      const currentScores = state.scores[match.id] || { sideA: 0, sideB: 0 };
-      const gamePoint = state.config.gamePoint;
-      
-      if (currentScores.sideA === 0 && currentScores.sideB === 0) {
-        ensureTimerStarted(match.id);
-      }
-
-      if (checkWinCondition(currentScores.sideA, currentScores.sideB, gamePoint) === 'B') {
-        match.winnerSide = 'B';
-      } else {
-        if (currentScores.sideA >= gamePoint) {
-          currentScores.sideB = currentScores.sideA + 2;
-        } else {
-          currentScores.sideB = gamePoint + 1;
-          if (currentScores.sideB - currentScores.sideA < 2) {
-            currentScores.sideB = currentScores.sideA + 2;
-          }
-        }
-        state.scores[match.id] = currentScores;
-        match.winnerSide = 'B';
-      }
-      if (state.timers[match.id]) {
-        const currentElapsed = getTimerElapsed(match.id);
-        if (state.timers[match.id].running) {
-          state.timers[match.id].running = false;
-        }
-        state.timers[match.id].finalElapsed = currentElapsed;
-        state.timers[match.id].elapsed = currentElapsed;
-      }
-      saveState();
-      renderMatches();
-      renderLeaderboard();
-    });
-
-    actions.appendChild(btnA);
-    actions.appendChild(btnB);
+  const colors = ['#f4c95d', '#ef6f6c', '#4ecdc4', '#7b8cff', '#f28f3b'];
+  for (let i = 0; i < 14; i++) {
+    const confetti = document.createElement('span');
+    confetti.className = 'win-celebration__confetti';
+    confetti.style.setProperty('--x', `${(Math.random() - 0.5) * 180}px`);
+    confetti.style.setProperty('--y', `${-35 - Math.random() * 85}px`);
+    confetti.style.setProperty('--rotate', `${Math.random() * 540 - 270}deg`);
+    confetti.style.setProperty('--color', colors[i % colors.length]);
+    celebration.appendChild(confetti);
   }
 
-  card.appendChild(actions);
-  return card;
+  card.appendChild(celebration);
+  window.setTimeout(() => celebration.remove(), 1400);
 }
 
 function getScoreClass(side, score, opponentScore, gamePoint) {
@@ -1147,7 +1107,7 @@ function applySchedulePromptConfig(config){
   const numPlayers = Math.max(4, Math.min(40, Number(config.numPlayers) || state.config.numPlayers || 6));
   const durationValue = Math.max(1, Number(config.durationValue) || state.config.durationValue || 2);
   const durationUnit = config.durationUnit === 'min' ? 'min' : 'hrs';
-  const gamePoint = Number(config.gamePoint) === 15 ? 15 : 21;
+  const gamePoint = Number(config.gamePoint) === 21 ? 21 : 15;
 
   document.getElementById('numPlayers').value = numPlayers;
   document.getElementById('durationValue').value = durationValue;
@@ -1297,7 +1257,7 @@ function saveGeneratedSchedule(config){
     numPlayers,
     durationValue: Math.max(1, Number(config.durationValue) || 2),
     durationUnit: config.durationUnit === 'min' ? 'min' : 'hrs',
-    gamePoint: Number(config.gamePoint) === 15 ? 15 : 21,
+    gamePoint: Number(config.gamePoint) === 21 ? 21 : 15,
     matchCount: Math.max(1, Number(config.matchCount) || matches.length)
   };
   state.playerNames = playerNames;

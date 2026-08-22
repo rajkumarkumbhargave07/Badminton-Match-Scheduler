@@ -46,7 +46,7 @@ public class SchedulePromptService {
         - matchMinutes should fit the total duration across all matches with about 3 minutes transition between matches.
         - startMin and endMin are minute offsets from session start.
         - If a value is missing, use the current config.
-        - If still unknown, use: 6 players, 2 hrs, 21 points, 6 matches.
+        - If still unknown, use: 6 players, 2 hrs, 15 points, 6 matches.
         - Return no markdown and no explanation outside JSON.
 
         JSON shape:
@@ -54,7 +54,7 @@ public class SchedulePromptService {
           "numPlayers": 6,
           "durationValue": 2,
           "durationUnit": "hrs",
-          "gamePoint": 21,
+          "gamePoint": 15,
           "matchCount": 6,
           "matchMinutes": 15,
           "playerNames": ["Raj", "Udit"],
@@ -132,7 +132,7 @@ public class SchedulePromptService {
     int numPlayers = clamp(defaultInt(response.numPlayers(), 6), 4, 40);
     int durationValue = clamp(defaultInt(response.durationValue(), 2), 1, 24 * 60);
     String durationUnit = "min".equals(response.durationUnit()) ? "min" : "hrs";
-    int gamePoint = response.gamePoint() != null && response.gamePoint() == 15 ? 15 : 21;
+    int gamePoint = response.gamePoint() != null && response.gamePoint() == 21 ? 21 : 15;
     int matchCount = clamp(defaultInt(response.matchCount(), 6), 1, 50);
     int matchMinutes = clamp(defaultInt(response.matchMinutes(), 15), 1, 24 * 60);
 
