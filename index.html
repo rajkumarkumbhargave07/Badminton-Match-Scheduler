@@ -1,0 +1,2055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Courtside — AI-Powered Badminton Scheduler</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      color-scheme: dark;
+      --bg:#0E1B33;
+      --panel:#1C3157;
+      --panel-2:#213A66;
+      --inset:#16294A;
+      --grid-line: rgba(238,241,246,0.025);
+      --border-faint: rgba(238,241,246,0.1);
+      --border-soft: rgba(238,241,246,0.15);
+      --border-mid: rgba(238,241,246,0.18);
+      --border-strong: rgba(238,241,246,0.25);
+      --shadow: rgba(0,0,0,0.45);
+      --scrim: rgba(0,0,0,0.15);
+      --text:#EEF1F6;
+      --text-muted:#8CA0C4;
+      --accent:#D6FF3F;
+      --accent-strong:#EBFF8C;
+      --accent-hover:#BEE62E;
+      --accent-ink:#0E1B33;
+      --accent-soft: rgba(214,255,63,0.1);
+      --accent-soft-2: rgba(214,255,63,0.25);
+      --accent-soft-3: rgba(214,255,63,0.3);
+      --teal:#4FD8C4;
+      --teal-soft: rgba(79,216,196,0.16);
+      --violet:#B9A4FF;
+      --violet-soft: rgba(185,164,255,0.16);
+      --warning:#FFB238;
+      --warning-soft: rgba(255,178,56,0.12);
+      --warning-border: rgba(255,178,56,0.4);
+      --danger:#FF6B6B;
+      --danger-text:#ffb3b3;
+      --danger-soft: rgba(255,107,107,0.12);
+      --danger-border: rgba(255,107,107,0.4);
+      --danger-border-soft: rgba(255,107,107,0.5);
+      --danger-hover-bg: rgba(255,107,107,0.14);
+      --timer-bg: rgba(0,0,0,0.3);
+      --timer-text: #4FD8C4;
+      --ai-accent: #7B61FF;
+      --ai-accent-soft: rgba(123,97,255,0.15);
+      --ai-accent-strong: #9B85FF;
+      --ai-glow: rgba(123,97,255,0.3);
+    }
+    html[data-theme="light"]{
+      color-scheme: light;
+      --bg:#F3F5FB;
+      --panel:#FFFFFF;
+      --panel-2:#EEF1FA;
+      --inset:#F1F4FA;
+      --grid-line: rgba(14,27,51,0.035);
+      --border-faint: rgba(14,27,51,0.08);
+      --border-soft: rgba(14,27,51,0.12);
+      --border-mid: rgba(14,27,51,0.16);
+      --border-strong: rgba(14,27,51,0.22);
+      --shadow: rgba(30,40,70,0.15);
+      --scrim: rgba(14,27,51,0.05);
+      --text:#16233F;
+      --text-muted:#5C6B8A;
+      --accent:#5E8A00;
+      --accent-strong:#4A6E00;
+      --accent-hover:#4A6E00;
+      --accent-ink:#FFFFFF;
+      --accent-soft: rgba(94,138,0,0.08);
+      --accent-soft-2: rgba(94,138,0,0.18);
+      --accent-soft-3: rgba(94,138,0,0.28);
+      --teal:#0E8C79;
+      --teal-soft: rgba(14,140,121,0.1);
+      --violet:#6E4FE0;
+      --violet-soft: rgba(110,79,224,0.1);
+      --warning:#B36B00;
+      --warning-soft: rgba(179,107,0,0.1);
+      --warning-border: rgba(179,107,0,0.35);
+      --danger:#C4302C;
+      --danger-text:#C4302C;
+      --danger-soft: rgba(196,48,44,0.08);
+      --danger-border: rgba(196,48,44,0.35);
+      --danger-border-soft: rgba(196,48,44,0.4);
+      --danger-hover-bg: rgba(196,48,44,0.1);
+      --timer-bg: rgba(0,0,0,0.05);
+      --timer-text: #0E8C79;
+      --ai-accent: #5C3FD4;
+      --ai-accent-soft: rgba(92,63,212,0.1);
+      --ai-accent-strong: #4A2EB8;
+      --ai-glow: rgba(92,63,212,0.2);
+    }
+    html[data-theme="light"] .btn-primary, html[data-theme="light"] .segmented button.active { color:#0E1B33; }
+    html[data-theme="light"] .btn-primary { background:#B7E62E; }
+    html[data-theme="light"] .btn-primary:hover { background:#A3D01F; }
+    html[data-theme="light"] .segmented button.active { background:#B7E62E; }
+
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      background: var(--bg);
+      background-image:
+        linear-gradient(var(--bg), var(--bg)),
+        repeating-linear-gradient(0deg, var(--grid-line) 0px, var(--grid-line) 1px, transparent 1px, transparent 80px),
+        repeating-linear-gradient(90deg, var(--grid-line) 0px, var(--grid-line) 1px, transparent 1px, transparent 80px);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+      transition: background-color .2s ease, color .2s ease;
+    }
+    h1, h2, h3, .display { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; margin: 0; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    button { font-family: inherit; cursor: pointer; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .navbar {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; gap: 10px;
+      background: color-mix(in srgb, var(--bg) 92%, transparent);
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .navbar__brand { display: flex; align-items: center; gap: 10px; }
+    .navbar__brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+    .navbar__title { font-size: 18px; letter-spacing: 0.08em; }
+    .navbar__controls { display: flex; align-items: center; gap: 8px; }
+    .theme-toggle {
+      background: var(--panel); border: 1px solid var(--border-soft);
+      color: var(--text); width: 38px; height: 38px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+      flex-shrink: 0;
+    }
+    .theme-toggle:hover { border-color: var(--accent); }
+    .navbar__menu { position: relative; }
+    .navbar__toggle {
+      background: var(--panel); border: 1px solid var(--border-soft);
+      color: var(--text); padding: 9px 16px; border-radius: 10px;
+      font-family: 'Oswald', sans-serif; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .navbar__toggle:hover { border-color: var(--accent); }
+    .navbar__caret { transition: transform .15s ease; }
+    .navbar__menu.open .navbar__caret { transform: rotate(180deg); }
+    .navbar__dropdown {
+      position: absolute; right: 0; top: calc(100% + 8px);
+      background: var(--panel); border: 1px solid var(--border-soft);
+      border-radius: 10px; min-width: 190px; overflow: hidden;
+      box-shadow: 0 12px 30px var(--shadow);
+      display: none; flex-direction: column;
+    }
+    .navbar__menu.open .navbar__dropdown { display: flex; }
+    .navbar__item {
+      padding: 12px 16px; background: transparent; border: 0; color: var(--text);
+      text-align: left; font-size: 14px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .navbar__item:hover { background: var(--panel-2); }
+    .navbar__item.active { color: var(--accent); }
+    .navbar__item.danger:hover { background: var(--danger-hover-bg); color: var(--danger); }
+
+    main { max-width: 520px; margin: 0 auto; padding: 24px 16px 80px; }
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .hero { margin-bottom: 28px; }
+    .hero__eyebrow { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 8px; }
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 42px); line-height: 1.05;
+      background: linear-gradient(120deg, var(--text) 55%, var(--accent) 130%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .hero p { color: var(--text-muted); max-width: 560px; margin-top: 10px; font-size: 15px; line-height: 1.5; }
+
+    .panel {
+      background: var(--panel); border: 1px solid var(--border-faint);
+      border-radius: 14px; padding: 24px; margin-bottom: 20px;
+      border-top: 2px solid var(--accent-soft-3);
+    }
+    .panel__title { font-size: 14px; color: var(--text-muted); letter-spacing: 0.1em; margin-bottom: 16px; }
+
+    .field-row { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 18px; }
+    .field { display: flex; flex-direction: column; gap: 8px; }
+    .field label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .field .field-hint { font-size: 12px; color: var(--text-muted); text-transform: none; letter-spacing: 0; }
+    .field input[type="number"], .field select {
+      background: var(--inset); border: 1px solid var(--border-mid);
+      color: var(--text); padding: 11px 12px; border-radius: 8px; font-size: 15px;
+      width: 100%;
+      min-width: 0;
+    }
+    .duration-combo { display: flex; gap: 8px; }
+    .duration-combo input { flex: 1; min-width: 0; }
+    .duration-combo select { width: 110px; flex-shrink: 0; }
+
+    .segmented {
+      display: flex; background: var(--inset); border-radius: 8px; padding: 4px; border: 1px solid var(--border-mid);
+    }
+    .segmented button {
+      flex: 1; background: transparent; border: 0; color: var(--text-muted);
+      padding: 9px 10px; border-radius: 6px; font-size: 14px; font-weight: 600;
+    }
+    .segmented button.active { background: var(--accent); color: var(--accent-ink); }
+
+    .player-names { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+    .player-names input {
+      background: var(--inset); border: 1px solid var(--border-mid);
+      color: var(--text); padding: 9px 10px; border-radius: 8px; font-size: 13px; width: 100%;
+      min-width: 0;
+    }
+
+    .btn {
+      border: 0; border-radius: 8px; padding: 13px 22px; font-family: 'Oswald', sans-serif;
+      font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600;
+      transition: all 0.2s ease;
+    }
+    .btn-primary { background: linear-gradient(135deg, var(--accent-strong), var(--accent)); color: var(--accent-ink); box-shadow: 0 6px 18px var(--accent-soft-2); }
+    .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-ai {
+      background: linear-gradient(135deg, var(--ai-accent-strong), var(--ai-accent));
+      color: white;
+      box-shadow: 0 4px 20px var(--ai-glow);
+    }
+    .btn-ai:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 30px var(--ai-glow);
+    }
+    .btn-ai:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border-strong); color: var(--text); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger { background: transparent; border: 1px solid var(--danger-border-soft); color: var(--danger); }
+    .btn-danger:hover { background: var(--danger-soft); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-sm { padding: 8px 14px; font-size: 12px; }
+
+    .banner { padding: 12px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
+    .banner-error { background: var(--danger-soft); border: 1px solid var(--danger-border); color: var(--danger-text); }
+    .banner-success { background: var(--accent-soft); border: 1px solid var(--accent-soft-2); color: var(--accent); }
+    .banner-warning { background: var(--warning-soft); border: 1px solid var(--warning-border); color: var(--warning); }
+    .banner-empty { background: var(--panel); border: 1px dashed var(--border-strong); color: var(--text-muted); text-align: center; padding: 40px 20px; border-radius: 14px; }
+
+    .scoreboard {
+      display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+      background: var(--bg); border: 1px solid var(--accent-soft-3);
+      border-radius: 12px; overflow: hidden; margin-bottom: 24px;
+    }
+    .scoreboard__cell {
+      padding: 14px 16px 12px; border-right: 1px solid var(--border-faint); border-bottom: 1px solid var(--border-faint);
+      border-top: 2px solid transparent;
+    }
+    .scoreboard__cell:nth-child(4n) { border-right: 0; }
+    .scoreboard__cell:nth-last-child(-n+4) { border-bottom: 0; }
+    .scoreboard__cell:nth-child(1){ border-top-color: var(--accent); }
+    .scoreboard__cell:nth-child(2){ border-top-color: var(--teal); }
+    .scoreboard__cell:nth-child(3){ border-top-color: var(--violet); }
+    .scoreboard__cell:nth-child(4){ border-top-color: var(--warning); }
+    .scoreboard__label { font-size: 10px; color: var(--text-muted); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 6px; }
+    .scoreboard__value { font-family: 'JetBrains Mono', monospace; font-size: 18px; color: var(--accent); font-weight: 600; }
+    .scoreboard__cell:nth-child(2) .scoreboard__value { color: var(--teal); }
+    .scoreboard__cell:nth-child(3) .scoreboard__value { color: var(--violet); }
+    .scoreboard__cell:nth-child(4) .scoreboard__value { color: var(--warning); }
+
+    .match-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+
+    .match-card {
+      background: var(--panel); border: 1px solid var(--border-faint);
+      border-radius: 12px; overflow: hidden;
+      transition: border-color 0.2s ease;
+    }
+    .match-card.ai-generated {
+      border-color: var(--ai-accent-soft);
+      border-width: 2px;
+    }
+    .match-card__meta {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 14px; background: var(--scrim);
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted);
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .match-card__meta .ai-badge {
+      background: var(--ai-accent);
+      color: white;
+      font-size: 9px;
+      padding: 1px 8px;
+      border-radius: 10px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .match-card__timer {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--timer-text);
+      flex-wrap: wrap;
+    }
+    .match-card__timer .timer-display {
+      background: var(--timer-bg);
+      padding: 2px 10px;
+      border-radius: 4px;
+      min-width: 60px;
+      text-align: center;
+      font-size: 13px;
+    }
+    .match-card__timer .timer-btn {
+      background: transparent;
+      border: 1px solid var(--border-soft);
+      color: var(--text-muted);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      line-height: 1.4;
+    }
+    .match-card__timer .timer-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .match-card__timer .timer-btn.running { color: var(--danger); border-color: var(--danger); }
+    .match-card__timer .timer-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .match-card__court {
+      display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch;
+      min-height: 80px;
+      width: 100%;
+      overflow: hidden;
+    }
+    .match-card__side {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 10px 8px;
+      text-align: center;
+      gap: 2px;
+      cursor: pointer;
+      transition: background 0.15s;
+      border-radius: 4px;
+      user-select: none;
+      min-width: 0;
+      width: 100%;
+      overflow: hidden;
+    }
+    .match-card__side:hover:not(.decided) { background: var(--accent-soft); }
+    .match-card__side-name { 
+      font-size: 13px; 
+      font-weight: 600; 
+      line-height: 1.2; 
+      word-break: break-word;
+      max-width: 100%;
+    }
+    .match-card__side-label { 
+      font-size: 9px; 
+      color: var(--text-muted); 
+      text-transform: uppercase; 
+      letter-spacing: 0.05em; 
+    }
+    .match-card__net {
+      width: 0; 
+      border-left: 2px dashed var(--border-strong); 
+      position: relative;
+      flex-shrink: 0;
+    }
+    .match-card__net::before {
+      content: "vs"; 
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%,-50%);
+      font-size: 11px; 
+      color: var(--text-muted); 
+      background: var(--bg); 
+      padding: 4px 8px;
+      border-radius: 20px; 
+      border: 1px solid var(--border-mid);
+      white-space: nowrap;
+    }
+    .match-card__score {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 26px;
+      font-weight: 700;
+      margin: 2px 0;
+      min-width: 40px;
+      text-align: center;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: transparent;
+      border: 2px solid transparent;
+      transition: border-color 0.15s;
+      width: auto;
+      max-width: 80px;
+    }
+    .match-card__score:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .match-card__score.match-point { color: var(--warning); }
+    .match-card__score.advantage { color: var(--accent); }
+    .match-card__score.deuce { color: var(--warning); }
+    .match-card__score.winning { color: var(--accent); }
+    .match-card__score.losing { color: var(--text-muted); }
+    .match-card__score.locked { cursor: default; opacity: 0.7; }
+    .match-card__score.locked:focus { border-color: transparent; background: transparent; }
+
+    .match-card__actions {
+      display: flex;
+      border-top: 1px solid var(--border-faint);
+      flex-wrap: wrap;
+    }
+    .match-card__actions .btn {
+      flex: 1;
+      min-width: 80px;
+      border-radius: 0;
+      border-right: 1px solid var(--border-faint);
+      padding: 10px 8px;
+      font-size: 12px;
+    }
+    .match-card__actions .btn:last-child { border-right: 0; }
+    .match-card__actions .btn:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
+    .match-card__actions .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .match-card.decided .match-card__side.winner { background: var(--accent-soft); }
+    .match-card.decided .match-card__side.winner .match-card__side-name { color: var(--accent); }
+    .match-card.decided .match-card__side.winner::after { content: "🏸 WON"; font-size: 9px; letter-spacing: 0.1em; color: var(--accent); margin-top: 2px; }
+    .match-card.decided .match-card__side.loser { opacity: 0.4; }
+    .match-card.decided .match-card__side .match-card__score { cursor: default; }
+
+    .leaderboard-wrap { width: 100%; overflow-x: auto; border-radius: 12px; }
+    .leaderboard-table { width: 100%; min-width: 420px; border-collapse: collapse; background: var(--panel); }
+    .leaderboard-table th, .leaderboard-table td { padding: 10px 12px; text-align: left; font-size: 13px; white-space: nowrap; }
+    .leaderboard-table thead th {
+      background: var(--scrim); font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .leaderboard-table tbody tr:not(:last-child) { border-bottom: 1px solid var(--border-faint); }
+    .leaderboard-table tbody tr:first-child .rank { color: var(--accent); }
+    .rank { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+    .win-pct { color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+
+    .section-actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+
+    .bottom-nav {
+      display: flex; justify-content: center; gap: 12px;
+      margin-top: 32px; padding-top: 16px;
+      border-top: 1px solid var(--border-faint);
+    }
+    .bottom-nav .btn { flex: 1; max-width: 140px; text-align: center; }
+
+    .share-btn {
+      background: var(--panel); border: 1px solid var(--accent-soft-3);
+      color: var(--accent); padding: 10px 16px; border-radius: 8px;
+      font-family: 'Oswald', sans-serif; font-size: 13px; letter-spacing: 0.06em;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .share-btn:hover { background: var(--panel-2); }
+
+    .balance-stats {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      background: var(--inset); border-radius: 8px; padding: 12px 16px;
+      margin-top: 12px; border-left: 3px solid var(--teal);
+    }
+    .balance-stats__item { display: flex; justify-content: space-between; font-size: 13px; }
+    .balance-stats__item .label { color: var(--text-muted); }
+    .balance-stats__item .value { color: var(--teal); font-family: 'JetBrains Mono', monospace; }
+
+    .match-summary {
+      margin-top: 20px;
+      padding: 16px;
+      background: var(--panel);
+      border-radius: 12px;
+      border: 1px solid var(--border-faint);
+    }
+    .match-summary h3 {
+      color: var(--accent);
+      font-family: 'Oswald', sans-serif;
+      font-size: 16px;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+    .match-summary-item {
+      padding: 6px 0;
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      border-bottom: 1px solid var(--border-faint);
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .match-summary-item:last-child { border-bottom: none; }
+    .match-summary-item .teams { color: var(--text); }
+    .match-summary-item .score { color: var(--accent); font-weight: 600; }
+
+    .ai-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: var(--ai-accent-soft);
+      border-radius: 20px;
+      border: 1px solid var(--ai-accent-soft);
+      font-size: 12px;
+      color: var(--ai-accent);
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 8px;
+    }
+    .ai-indicator .pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--ai-accent);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(0.8); }
+    }
+
+    .ai-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      padding: 12px;
+      background: var(--inset);
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+    .ai-stats .stat {
+      text-align: center;
+    }
+    .ai-stats .stat .label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .ai-stats .stat .value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      color: var(--ai-accent);
+      font-weight: 600;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid var(--ai-accent-soft);
+      border-radius: 50%;
+      border-top-color: var(--ai-accent);
+      animation: spin 0.8s ease-in-out infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width:400px){
+      .panel { padding: 16px; }
+      .duration-combo select { width: 90px; }
+      .field-row { gap: 12px; }
+      .scoreboard { grid-template-columns: 1fr 1fr; }
+      .scoreboard__cell:nth-child(4n) { border-right: 1px solid var(--border-faint); }
+      .scoreboard__cell:nth-child(2n) { border-right: 0; }
+      .scoreboard__cell:nth-last-child(-n+2) { border-bottom: 0; }
+      .match-card__score { font-size: 22px; min-width: 32px; }
+      .match-card__actions .btn { min-width: 60px; font-size: 11px; padding: 8px 6px; }
+      .match-card__timer { font-size: 11px; }
+      .match-card__side-name { font-size: 11px; }
+      .match-summary-item { font-size: 11px; flex-wrap: wrap; }
+      .ai-stats { grid-template-columns: 1fr; gap: 6px; }
+    }
+    @media (prefers-reduced-motion: reduce){ * { transition: none !important; } }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar__brand">
+    <span class="dot"></span>
+    <span class="navbar__title display">Courtside</span>
+    <span style="font-size:10px;color:var(--ai-accent);font-family:'JetBrains Mono',monospace;background:var(--ai-accent-soft);padding:0 8px;border-radius:10px;">AI</span>
+  </div>
+  <div class="navbar__controls">
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle dark/light theme" title="Toggle theme">🌙</button>
+    <div class="navbar__menu" id="navMenu">
+      <button class="navbar__toggle" id="navToggle" aria-haspopup="true" aria-expanded="false">
+        Menu <span class="navbar__caret">▾</span>
+      </button>
+      <div class="navbar__dropdown" role="menu">
+        <button class="navbar__item" data-view="home" role="menuitem">Home</button>
+        <button class="navbar__item" data-view="matches" role="menuitem">Matches</button>
+        <button class="navbar__item" data-view="leaderboard" role="menuitem">Leaderboard</button>
+        <button class="navbar__item danger" id="resetBtn" role="menuitem">Reset</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+  <!-- HOME -->
+  <section class="view" id="view-home">
+    <div class="hero">
+      <div class="hero__eyebrow">⚡ AI-Powered Match Scheduler</div>
+      <h1 id="homeHeading">Smart 2v2 Schedule</h1>
+      <p>Our AI engine creates optimally balanced matches by analyzing player patterns, ensuring fair play, varied partnerships, and minimal repeats.</p>
+    </div>
+    <div id="homeBanner"></div>
+
+    <form class="panel" id="setupForm">
+      <div class="panel__title">Tournament setup</div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="numPlayers">Number of players</label>
+          <input type="number" id="numPlayers" min="4" max="40" step="1" value="6" required>
+          <span class="field-hint">Minimum 4 players for doubles</span>
+        </div>
+        <div class="field">
+          <label for="durationValue">Total duration</label>
+          <div class="duration-combo">
+            <input type="number" id="durationValue" min="1" step="1" value="2" required>
+            <select id="durationUnit">
+              <option value="hrs" selected>Hours</option>
+              <option value="min">Minutes</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom:18px;">
+        <label>Game point</label>
+        <div class="segmented" id="gamePointSegmented">
+          <button type="button" data-point="21" class="active">21 pts</button>
+          <button type="button" data-point="15">15 pts</button>
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom:18px;">
+        <label>Player names <span class="field-hint">(optional — defaults to Player N)</span></label>
+        <div class="player-names" id="playerNames"></div>
+      </div>
+
+      <div class="field" style="margin-bottom:18px;">
+        <label for="matchCount">Number of matches to schedule</label>
+        <input type="number" id="matchCount" min="1" step="1" value="6">
+        <span class="field-hint" id="matchCountHint">AI will optimize for balanced participation</span>
+      </div>
+
+      <div class="section-actions">
+        <button type="submit" class="btn btn-primary" id="generateBtn">Generate Schedule</button>
+        <button type="button" class="btn btn-ai" id="aiOptimizeBtn">🤖 AI Optimize</button>
+      </div>
+      
+      <div id="aiStatus" style="margin-top:12px;display:none;">
+        <div class="ai-indicator">
+          <span class="loading-spinner"></span>
+          <span>AI is generating optimal matches...</span>
+        </div>
+      </div>
+    </form>
+
+    <div class="bottom-nav">
+      <button class="btn btn-ghost" onclick="setView('matches')">Matches</button>
+      <button class="btn btn-ghost" onclick="setView('leaderboard')">Leaderboard</button>
+    </div>
+  </section>
+
+  <!-- MATCHES -->
+  <section class="view" id="view-matches">
+    <div class="hero">
+      <div class="hero__eyebrow">Schedule</div>
+      <h1>AI-Generated Matches</h1>
+    </div>
+    <div id="matchesContent"></div>
+
+    <div class="bottom-nav">
+      <button class="btn btn-ghost" onclick="setView('home')">Home</button>
+      <button class="btn btn-ghost" onclick="setView('leaderboard')">Leaderboard</button>
+      <button class="share-btn" id="shareMatchesBtn">📤 Share</button>
+    </div>
+  </section>
+
+  <!-- LEADERBOARD -->
+  <section class="view" id="view-leaderboard">
+    <div class="hero">
+      <div class="hero__eyebrow">Standings</div>
+      <h1>Leaderboard</h1>
+    </div>
+    <div id="leaderboardContent"></div>
+
+    <div class="bottom-nav">
+      <button class="btn btn-ghost" onclick="setView('home')">Home</button>
+      <button class="btn btn-ghost" onclick="setView('matches')">Matches</button>
+      <button class="share-btn" id="shareLeaderboardBtn">📤 Share</button>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  /* ─── BACKEND API SIMULATION ─── */
+  // This simulates a backend API call. Replace with actual fetch() to your deployed backend
+  const API = {
+    // Simulated backend endpoint - replace with your actual backend URL when deployed
+    // Example: 'https://your-backend.onrender.com/api/generate'
+    baseURL: window.location.origin,
+    
+    async generateSchedule(config, players, existingStats = null) {
+      // Simulate network delay (500ms - 2000ms)
+      const delay = 500 + Math.random() * 1500;
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      // Call the local AI engine (simulating backend processing)
+      return this._runAIEngine(config, players, existingStats);
+    },
+    
+    _runAIEngine(config, players, existingStats) {
+      // This is the actual AI engine that would run on the backend
+      // We're running it client-side for demo purposes
+      const result = AIMatchEngine.generateBalanced(config, players, existingStats);
+      return result;
+    }
+  };
+
+  /* ─── AI MATCH ENGINE ─── */
+  const AIMatchEngine = (function(){
+    const TRANSITION_MINUTES = 3;
+    const ABS_MIN_MATCH_MINUTES = 4;
+
+    function shuffle(arr){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+    function matchMinutesForGamePoint(gamePoint){ return Math.max(ABS_MIN_MATCH_MINUTES, Math.round(15 * (gamePoint / 21))); }
+
+    function calculateAIScore(teamA, teamB, playerStats, allPlayers) {
+      let score = 0;
+      const matchPlayers = [...teamA, ...teamB];
+
+      // Factor 1: Match balance (30%)
+      const totalMatches = matchPlayers.reduce((sum, p) => sum + playerStats[p.id].matches, 0);
+      score += (totalMatches / matchPlayers.length) * 3;
+
+      // Factor 2: Rest fairness (25%)
+      const avgRest = matchPlayers.reduce((sum, p) => sum + (playerStats[p.id].restRounds || 0), 0) / matchPlayers.length;
+      const maxRest = Math.max(...matchPlayers.map(p => playerStats[p.id].restRounds || 0));
+      score -= Math.abs(avgRest - maxRest) * 2;
+
+      // Factor 3: Skill balance (25%)
+      const avgSkill = matchPlayers.reduce((sum, p) => sum + (playerStats[p.id].skillScore || 0.5), 0) / matchPlayers.length;
+      const teamASkill = teamA.reduce((sum, p) => sum + (playerStats[p.id].skillScore || 0.5), 0) / teamA.length;
+      const teamBSkill = teamB.reduce((sum, p) => sum + (playerStats[p.id].skillScore || 0.5), 0) / teamB.length;
+      score -= Math.abs(teamASkill - teamBSkill) * 5;
+
+      // Factor 4: Partnership variety (10%)
+      let partnershipScore = 0;
+      const getPartnershipCount = (p1, p2) => {
+        const key = [p1.id, p2.id].sort().join('+');
+        return playerStats[p1.id].partnerships[key] || 0;
+      };
+      for (let i = 0; i < teamA.length; i++) {
+        for (let j = i + 1; j < teamA.length; j++) {
+          partnershipScore += getPartnershipCount(teamA[i], teamA[j]);
+        }
+      }
+      for (let i = 0; i < teamB.length; i++) {
+        for (let j = i + 1; j < teamB.length; j++) {
+          partnershipScore += getPartnershipCount(teamB[i], teamB[j]);
+        }
+      }
+      score += partnershipScore * 2;
+
+      // Factor 5: Opponent variety (10%)
+      let opponentScore = 0;
+      const getOpponentCount = (p1, p2) => {
+        const key = [p1.id, p2.id].sort().join('+');
+        return playerStats[p1.id].opponents[key] || 0;
+      };
+      for (const p1 of teamA) {
+        for (const p2 of teamB) {
+          opponentScore += getOpponentCount(p1, p2);
+        }
+      }
+      score += opponentScore * 1.5;
+
+      return score;
+    }
+
+    function generateAIMatches(players, desiredCount, existingStats) {
+      const n = players.length;
+      if(n < 4 || desiredCount <= 0) return { matches: [], stats: null, aiStats: null };
+
+      const playerStats = {};
+      players.forEach(p => {
+        playerStats[p.id] = {
+          name: p.name,
+          matches: 0,
+          restRounds: 0,
+          partnerships: {},
+          opponents: {},
+          skillScore: existingStats && existingStats[p.id] ? existingStats[p.id].skillScore || 0.5 : 0.5,
+          winRate: existingStats && existingStats[p.id] ? existingStats[p.id].winRate || 0 : 0,
+          fatigue: 0
+        };
+      });
+
+      const usedCombos = new Set();
+
+      function getTeamKey(team) {
+        return team.map(p => p.id).sort().join('+');
+      }
+
+      function getMatchKey(teamA, teamB) {
+        const keyA = getTeamKey(teamA);
+        const keyB = getTeamKey(teamB);
+        return [keyA, keyB].sort().join('__');
+      }
+
+      const matches = [];
+      const allPlayers = players.slice();
+
+      let attempts = 0;
+      const maxAttempts = desiredCount * 300 + 2000;
+
+      while (matches.length < desiredCount && attempts < maxAttempts) {
+        attempts++;
+
+        const sortedPlayers = allPlayers.slice().sort((a, b) => {
+          const aScore = playerStats[a.id].matches * 3 - (playerStats[a.id].restRounds || 0) * 2 - playerStats[a.id].fatigue;
+          const bScore = playerStats[b.id].matches * 3 - (playerStats[b.id].restRounds || 0) * 2 - playerStats[b.id].fatigue;
+          return aScore - bScore;
+        });
+
+        let bestPlayers = null;
+        let bestScore = Infinity;
+        const topCandidates = sortedPlayers.slice(0, Math.min(sortedPlayers.length, 16));
+
+        for (let i = 0; i < topCandidates.length; i++) {
+          for (let j = i + 1; j < topCandidates.length; j++) {
+            for (let k = j + 1; k < topCandidates.length; k++) {
+              for (let l = k + 1; l < topCandidates.length; l++) {
+                const candidates = [topCandidates[i], topCandidates[j], topCandidates[k], topCandidates[l]];
+                const matchCount = candidates.reduce((sum, p) => sum + playerStats[p.id].matches, 0);
+                const restTotal = candidates.reduce((sum, p) => sum + (playerStats[p.id].restRounds || 0), 0);
+                const fatigueTotal = candidates.reduce((sum, p) => sum + playerStats[p.id].fatigue, 0);
+                
+                const totalScore = matchCount * 5 - restTotal * 3 + fatigueTotal * 2;
+
+                if (totalScore < bestScore) {
+                  bestScore = totalScore;
+                  bestPlayers = candidates;
+                }
+              }
+            }
+          }
+        }
+
+        if (!bestPlayers) {
+          bestPlayers = sortedPlayers.slice(0, 4);
+        }
+
+        const [a, b, c, d] = bestPlayers;
+        const combos = [
+          { teamA: [a, b], teamB: [c, d] },
+          { teamA: [a, c], teamB: [b, d] },
+          { teamA: [a, d], teamB: [b, c] }
+        ];
+
+        const scoredCombos = combos.map(combo => {
+          const aiScore = calculateAIScore(combo.teamA, combo.teamB, playerStats, allPlayers);
+          return { ...combo, aiScore };
+        });
+
+        scoredCombos.sort((a, b) => a.aiScore - b.aiScore);
+
+        const topN = Math.min(3, scoredCombos.length);
+        const selected = scoredCombos[Math.floor(Math.random() * topN)];
+
+        const teamA = selected.teamA;
+        const teamB = selected.teamB;
+        const matchKey = getMatchKey(teamA, teamB);
+
+        const isDuplicate = usedCombos.has(matchKey);
+        const duplicateThreshold = matches.length < desiredCount * 0.7 ? 0.3 : 0.1;
+
+        if (!isDuplicate || matches.length >= desiredCount * (1 - duplicateThreshold)) {
+          addMatch(teamA, teamB, matchKey);
+        } else {
+          let found = false;
+          for (let idx = 1; idx < scoredCombos.length; idx++) {
+            const alt = scoredCombos[idx];
+            const altKey = getMatchKey(alt.teamA, alt.teamB);
+            if (!usedCombos.has(altKey)) {
+              addMatch(alt.teamA, alt.teamB, altKey);
+              found = true;
+              break;
+            }
+          }
+          if (!found && matches.length < desiredCount) {
+            addMatch(teamA, teamB, matchKey);
+          }
+        }
+      }
+
+      function addMatch(teamA, teamB, key) {
+        const matchPlayers = [...teamA, ...teamB];
+        
+        teamA.forEach(p => playerStats[p.id].matches++);
+        teamB.forEach(p => playerStats[p.id].matches++);
+
+        matchPlayers.forEach(p => {
+          playerStats[p.id].fatigue += 1;
+        });
+
+        for (let i = 0; i < teamA.length; i++) {
+          for (let j = i + 1; j < teamA.length; j++) {
+            const key = [teamA[i].id, teamA[j].id].sort().join('+');
+            playerStats[teamA[i].id].partnerships[key] = (playerStats[teamA[i].id].partnerships[key] || 0) + 1;
+            playerStats[teamA[j].id].partnerships[key] = (playerStats[teamA[j].id].partnerships[key] || 0) + 1;
+          }
+        }
+        for (let i = 0; i < teamB.length; i++) {
+          for (let j = i + 1; j < teamB.length; j++) {
+            const key = [teamB[i].id, teamB[j].id].sort().join('+');
+            playerStats[teamB[i].id].partnerships[key] = (playerStats[teamB[i].id].partnerships[key] || 0) + 1;
+            playerStats[teamB[j].id].partnerships[key] = (playerStats[teamB[j].id].partnerships[key] || 0) + 1;
+          }
+        }
+
+        for (const p1 of teamA) {
+          for (const p2 of teamB) {
+            const key = [p1.id, p2.id].sort().join('+');
+            playerStats[p1.id].opponents[key] = (playerStats[p1.id].opponents[key] || 0) + 1;
+            playerStats[p2.id].opponents[key] = (playerStats[p2.id].opponents[key] || 0) + 1;
+          }
+        }
+
+        allPlayers.forEach(p => {
+          if (!matchPlayers.some(mp => mp.id === p.id)) {
+            playerStats[p.id].restRounds = (playerStats[p.id].restRounds || 0) + 1;
+            playerStats[p.id].fatigue = Math.max(0, playerStats[p.id].fatigue - 0.5);
+          }
+        });
+
+        usedCombos.add(key);
+
+        matches.push({
+          sideA: { playerIds: teamA.map(p => p.id), label: teamA.map(p => p.name).join(' & ') },
+          sideB: { playerIds: teamB.map(p => p.id), label: teamB.map(p => p.name).join(' & ') },
+          winnerSide: null
+        });
+      }
+
+      const stats = Object.values(playerStats);
+      const maxMatches = Math.max(...stats.map(s => s.matches));
+      const minMatches = Math.min(...stats.map(s => s.matches));
+      const maxRest = Math.max(...stats.map(s => s.restRounds || 0));
+      const minRest = Math.min(...stats.map(s => s.restRounds || 0));
+      const avgMatches = stats.reduce((sum, s) => sum + s.matches, 0) / stats.length;
+
+      const aiStats = {
+        totalCombinationsConsidered: attempts,
+        avgMatchesPerPlayer: avgMatches,
+        matchBalance: maxMatches - minMatches,
+        restBalance: maxRest - minRest,
+        uniquenessScore: usedCombos.size / matches.length,
+        perfectBalance: maxMatches - minMatches <= 1 && maxRest - minRest <= 1
+      };
+
+      return {
+        matches,
+        stats: {
+          totalMatches: matches.length,
+          players: playerStats,
+          maxMatches,
+          minMatches,
+          maxRest,
+          minRest,
+          perfectBalance: maxMatches - minMatches <= 1 && maxRest - minRest <= 1
+        },
+        aiStats
+      };
+    }
+
+    function assignSchedule(matches, totalMinutes, gamePoint) {
+      const count = matches.length;
+      if(count === 0) return { matches: [], matchMinutes: 0, warning: null };
+
+      const estMatchMinutes = matchMinutesForGamePoint(gamePoint);
+      let matchMinutes = Math.floor((totalMinutes - (count - 1) * TRANSITION_MINUTES) / count);
+      let warning = null;
+
+      if(matchMinutes < ABS_MIN_MATCH_MINUTES) {
+        matchMinutes = ABS_MIN_MATCH_MINUTES;
+        warning = `Tight schedule: matches set to ${ABS_MIN_MATCH_MINUTES}-min floor. Consider reducing match count or increasing time.`;
+      }
+
+      if(matchMinutes > estMatchMinutes * 1.5) {
+        matchMinutes = Math.min(matchMinutes, Math.round(estMatchMinutes * 1.2));
+      }
+
+      let cursor = 0, id = 1;
+      const scheduled = matches.map(m => {
+        const startMin = cursor, endMin = cursor + matchMinutes;
+        cursor = endMin + TRANSITION_MINUTES;
+        return {
+          id: 'm' + (id++),
+          sideA: m.sideA,
+          sideB: m.sideB,
+          winnerSide: null,
+          startMin,
+          endMin
+        };
+      });
+
+      return { matches: scheduled, matchMinutes, warning };
+    }
+
+    function generateBalanced(config, players, existingStats) {
+      const totalMinutes = config.durationUnit === 'hrs' ? Number(config.durationValue) * 60 : Number(config.durationValue);
+      const result = generateAIMatches(players, config.matchCount, existingStats);
+      
+      if (result.matches.length === 0) {
+        return { matches: [], matchMinutes: 0, warning: 'Not enough players to generate matches.', balanceStats: null, aiStats: null };
+      }
+
+      const scheduled = assignSchedule(result.matches, totalMinutes, config.gamePoint);
+      
+      return {
+        matches: scheduled.matches,
+        matchMinutes: scheduled.matchMinutes,
+        warning: scheduled.warning || (result.stats.perfectBalance ? null : 'AI-optimized schedule is near perfect.'),
+        balanceStats: result.stats,
+        aiStats: result.aiStats
+      };
+    }
+
+    return { generateBalanced, matchMinutesForGamePoint, TRANSITION_MINUTES };
+  })();
+
+  /* ─── STATE ─── */
+  const STORAGE_KEY = 'courtside_state_v13_ai_backend';
+  let storageAvailable = true;
+
+  function defaultState(){
+    return {
+      config: { numPlayers: 6, durationValue: 2, durationUnit: 'hrs', gamePoint: 21, matchCount: null },
+      playerNames: [],
+      players: [],
+      matches: [],
+      matchMinutes: 0,
+      generated: false,
+      warning: null,
+      currentView: 'home',
+      balanceStats: null,
+      theme: null,
+      scores: {},
+      timers: {},
+      aiUsed: false,
+      aiStats: null
+    };
+  }
+
+  function systemPrefersLight(){
+    return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: light)').matches;
+  }
+  function effectiveTheme(){
+    return state.theme || (systemPrefersLight() ? 'light' : 'dark');
+  }
+  function applyTheme(){
+    const theme = effectiveTheme();
+    document.documentElement.setAttribute('data-theme', theme);
+    const btn = document.getElementById('themeToggle');
+    if(btn) btn.textContent = theme === 'light' ? '☀️' : '🌙';
+  }
+  function toggleTheme(){
+    state.theme = effectiveTheme() === 'light' ? 'dark' : 'light';
+    saveState();
+    applyTheme();
+  }
+
+  function loadState(){
+    try { const raw = localStorage.getItem(STORAGE_KEY); if(!raw) return defaultState(); return Object.assign(defaultState(), JSON.parse(raw)); }
+    catch(e){ storageAvailable = false; return defaultState(); }
+  }
+
+  let state = loadState();
+
+  function saveState(){
+    if(!storageAvailable) return;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){ storageAvailable = false; }
+  }
+
+  function resetState(){
+    const keepTheme = state.theme;
+    try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+    state = defaultState();
+    state.theme = keepTheme;
+    saveState();
+    applyTheme();
+    renderAll();
+    setView('home');
+  }
+
+  /* ─── HELPERS ─── */
+  function formatMinutes(min){ const h=Math.floor(min/60), m=min%60; return h>0 ? `${h}:${String(m).padStart(2,'0')}` : `0:${String(m).padStart(2,'0')}`; }
+  function getGamePoint(){ return Number(document.querySelector('#gamePointSegmented button.active').dataset.point); }
+  function formatTimer(seconds){
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  /* ─── WIN CONDITION ─── */
+  function checkWinCondition(scoreA, scoreB, gamePoint) {
+    if (Math.abs(scoreA - scoreB) >= 2) {
+      if (scoreA >= gamePoint && scoreB >= gamePoint) {
+        return scoreA > scoreB ? 'A' : 'B';
+      }
+      if (scoreA > gamePoint) {
+        return 'A';
+      }
+      if (scoreB > gamePoint) {
+        return 'B';
+      }
+    }
+    return null;
+  }
+
+  function getScoreStatus(scoreA, scoreB, gamePoint) {
+    const winner = checkWinCondition(scoreA, scoreB, gamePoint);
+    if (winner) {
+      return { status: 'won', winner: winner };
+    }
+    
+    if (scoreA >= gamePoint - 1 && scoreB >= gamePoint - 1) {
+      if (scoreA === scoreB) {
+        return { status: 'deuce' };
+      }
+      if (Math.abs(scoreA - scoreB) === 1) {
+        return { status: 'advantage', leader: scoreA > scoreB ? 'A' : 'B' };
+      }
+    }
+    
+    if (scoreA === gamePoint - 1 && scoreB < gamePoint - 1) {
+      return { status: 'matchPoint', player: 'A' };
+    }
+    if (scoreB === gamePoint - 1 && scoreA < gamePoint - 1) {
+      return { status: 'matchPoint', player: 'B' };
+    }
+    
+    return { status: 'normal' };
+  }
+
+  function ensureTimerStarted(matchId) {
+    if (!state.timers[matchId]) {
+      state.timers[matchId] = { running: false, elapsed: 0, startTime: null, finalElapsed: null, started: false };
+    }
+    const timer = state.timers[matchId];
+    const match = state.matches.find(m => m.id === matchId);
+    if (!timer.started && !match.winnerSide) {
+      timer.started = true;
+      timer.running = true;
+      timer.startTime = Date.now() - (timer.elapsed || 0) * 1000;
+      saveState();
+    }
+  }
+
+  function incrementScore(matchId, side) {
+    const match = state.matches.find(m => m.id === matchId);
+    if (!match || match.winnerSide) return;
+
+    ensureTimerStarted(matchId);
+
+    if (!state.scores[matchId]) {
+      state.scores[matchId] = { sideA: 0, sideB: 0 };
+    }
+
+    const scores = state.scores[matchId];
+    const gamePoint = state.config.gamePoint;
+
+    if (side === 'A') {
+      scores.sideA++;
+    } else {
+      scores.sideB++;
+    }
+
+    const winner = checkWinCondition(scores.sideA, scores.sideB, gamePoint);
+    if (winner) {
+      match.winnerSide = winner;
+      if (state.timers[matchId]) {
+        const currentElapsed = getTimerElapsed(matchId);
+        if (state.timers[matchId].running) {
+          state.timers[matchId].running = false;
+        }
+        state.timers[matchId].finalElapsed = currentElapsed;
+        state.timers[matchId].elapsed = currentElapsed;
+      }
+    }
+
+    saveState();
+    renderMatches();
+    renderLeaderboard();
+  }
+
+  function decrementScore(matchId, side) {
+    const match = state.matches.find(m => m.id === matchId);
+    if (!match || match.winnerSide) return;
+
+    if (!state.scores[matchId]) {
+      state.scores[matchId] = { sideA: 0, sideB: 0 };
+    }
+
+    const scores = state.scores[matchId];
+    if (side === 'A' && scores.sideA > 0) {
+      scores.sideA--;
+    } else if (side === 'B' && scores.sideB > 0) {
+      scores.sideB--;
+    }
+
+    match.winnerSide = null;
+    if (state.timers[matchId]) {
+      state.timers[matchId].finalElapsed = null;
+    }
+
+    saveState();
+    renderMatches();
+    renderLeaderboard();
+  }
+
+  function updateScoreDirect(matchId, side, value) {
+    const match = state.matches.find(m => m.id === matchId);
+    if (!match || match.winnerSide) return;
+
+    const currentScores = state.scores[matchId] || { sideA: 0, sideB: 0 };
+    const numValue = parseInt(value);
+    if (isNaN(numValue) || numValue < 0) return;
+    
+    if (numValue > 0 && currentScores.sideA === 0 && currentScores.sideB === 0) {
+      ensureTimerStarted(matchId);
+    }
+
+    if (!state.scores[matchId]) {
+      state.scores[matchId] = { sideA: 0, sideB: 0 };
+    }
+
+    const scores = state.scores[matchId];
+    if (side === 'A') {
+      scores.sideA = numValue;
+    } else {
+      scores.sideB = numValue;
+    }
+
+    const gamePoint = state.config.gamePoint;
+    const winner = checkWinCondition(scores.sideA, scores.sideB, gamePoint);
+    if (winner) {
+      match.winnerSide = winner;
+      if (state.timers[matchId]) {
+        const currentElapsed = getTimerElapsed(matchId);
+        if (state.timers[matchId].running) {
+          state.timers[matchId].running = false;
+        }
+        state.timers[matchId].finalElapsed = currentElapsed;
+        state.timers[matchId].elapsed = currentElapsed;
+      }
+    } else {
+      match.winnerSide = null;
+      if (state.timers[matchId]) {
+        state.timers[matchId].finalElapsed = null;
+      }
+    }
+
+    saveState();
+    renderMatches();
+    renderLeaderboard();
+  }
+
+  /* ─── TIMER FUNCTIONS ─── */
+  function toggleTimer(matchId) {
+    const match = state.matches.find(m => m.id === matchId);
+    if (match && match.winnerSide) return;
+
+    if (!state.timers[matchId]) {
+      state.timers[matchId] = { running: false, elapsed: 0, startTime: null, finalElapsed: null, started: false };
+    }
+    const timer = state.timers[matchId];
+
+    if (match && match.winnerSide) return;
+
+    if (!timer.running) {
+      timer.started = true;
+      timer.running = true;
+      timer.startTime = Date.now() - (timer.elapsed || 0) * 1000;
+    } else {
+      timer.running = false;
+      timer.elapsed = Math.floor((Date.now() - timer.startTime) / 1000);
+      if (match && match.winnerSide) {
+        timer.finalElapsed = timer.elapsed;
+      }
+    }
+    saveState();
+    renderMatches();
+  }
+
+  function resetTimer(matchId) {
+    const match = state.matches.find(m => m.id === matchId);
+    if (match && match.winnerSide) return;
+    
+    state.timers[matchId] = { running: false, elapsed: 0, startTime: null, finalElapsed: null, started: false };
+    saveState();
+    renderMatches();
+  }
+
+  function getTimerElapsed(matchId) {
+    const timer = state.timers[matchId];
+    if (!timer) return 0;
+    const match = state.matches.find(m => m.id === matchId);
+    if (match && match.winnerSide && timer.finalElapsed !== null && timer.finalElapsed !== undefined) {
+      return timer.finalElapsed;
+    }
+    if (timer.running && timer.startTime) {
+      return Math.floor((Date.now() - timer.startTime) / 1000);
+    }
+    return timer.elapsed || 0;
+  }
+
+  /* ─── SHARE ─── */
+  function buildMatchSummary() {
+    const completedMatches = state.matches.filter(m => m.winnerSide);
+    if (completedMatches.length === 0) return '';
+
+    let summary = '\n\nMATCH SUMMARY\n';
+    summary += '─'.repeat(30) + '\n';
+
+    completedMatches.forEach((m, idx) => {
+      const scores = state.scores[m.id] || { sideA: 0, sideB: 0 };
+      const isAWinner = m.winnerSide === 'A';
+      const winningTeam = isAWinner ? m.sideA : m.sideB;
+      const losingTeam = isAWinner ? m.sideB : m.sideA;
+      
+      const winningPlayers = winningTeam.label.split(' & ');
+      const losingPlayers = losingTeam.label.split(' & ');
+      const winningLabel = winningPlayers.join(' 🏆 ');
+      const losingLabel = losingPlayers.join(' & ');
+      
+      const scoreA = scores.sideA;
+      const scoreB = scores.sideB;
+      
+      summary += `Match ${idx + 1}\n`;
+      summary += `${winningLabel} VS ${losingLabel}\n`;
+      summary += `${scoreA} - ${scoreB}\n\n`;
+    });
+
+    return summary;
+  }
+
+  /* ─── RENDER HOME ─── */
+  function renderPlayerNameInputs(){
+    const container = document.getElementById('playerNames');
+    const n = Math.max(0, Math.min(40, Number(document.getElementById('numPlayers').value) || 0));
+    const existing = state.playerNames || [];
+    container.innerHTML = '';
+    for(let i=0;i<n;i++){
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = `Player ${i+1}`;
+      input.value = existing[i] || '';
+      input.dataset.idx = i;
+      container.appendChild(input);
+    }
+  }
+
+  function updateRecommendation(){
+    const numPlayers = Math.max(0, Number(document.getElementById('numPlayers').value) || 0);
+    const durationValue = Number(document.getElementById('durationValue').value) || 0;
+    const durationUnit = document.getElementById('durationUnit').value;
+    const gamePoint = getGamePoint();
+    const totalMinutes = durationUnit === 'hrs' ? durationValue*60 : durationValue;
+    const estMatchMinutes = AIMatchEngine.matchMinutesForGamePoint(gamePoint);
+
+    const countInput = document.getElementById('matchCount');
+    const hint = document.getElementById('matchCountHint');
+
+    if(numPlayers < 4){
+      countInput.min = 0; countInput.max = 0; countInput.value = 0; countInput.disabled = true;
+      hint.textContent = 'Need at least 4 players for doubles.';
+      return;
+    }
+
+    countInput.disabled = false;
+    countInput.min = 1;
+
+    const recommendedPerPlayer = Math.max(2, Math.floor(totalMinutes / (estMatchMinutes + AIMatchEngine.TRANSITION_MINUTES) * 2 / numPlayers));
+    const recommended = Math.max(4, Math.round(recommendedPerPlayer * numPlayers / 2));
+    const maxMatches = Math.floor(totalMinutes / (estMatchMinutes + AIMatchEngine.TRANSITION_MINUTES)) || 1;
+
+    countInput.max = Math.min(maxMatches, 50);
+    countInput.value = Math.min(Math.max(countInput.value || recommended, 1), countInput.max);
+
+    hint.textContent = `AI recommends ${recommended} matches (${Math.round(recommended * 2 / numPlayers)} per player). Max: ${countInput.max}`;
+  }
+
+  function renderHome(){
+    document.getElementById('numPlayers').value = state.config.numPlayers;
+    document.getElementById('durationValue').value = state.config.durationValue;
+    document.getElementById('durationUnit').value = state.config.durationUnit;
+    document.querySelectorAll('#gamePointSegmented button').forEach(btn => btn.classList.toggle('active', Number(btn.dataset.point) === state.config.gamePoint));
+    renderPlayerNameInputs();
+    updateRecommendation();
+    document.getElementById('homeHeading').textContent = state.generated ? 'Update Schedule' : 'AI-Powered Schedule';
+    document.getElementById('generateBtn').textContent = state.generated ? 'Regenerate Schedule' : 'Generate Schedule';
+
+    const banner = document.getElementById('homeBanner');
+    banner.innerHTML = '';
+    if(!storageAvailable){
+      const div = document.createElement('div');
+      div.className = 'banner banner-warning';
+      div.textContent = 'Local storage is blocked. Results won\'t persist across refreshes.';
+      banner.appendChild(div);
+    }
+    if(state.generated && state.aiUsed){
+      const div = document.createElement('div');
+      div.className = 'banner banner-success';
+      div.innerHTML = '🤖 AI-optimized schedule generated! The system balanced matches for fair play.';
+      banner.appendChild(div);
+    } else if(state.generated){
+      const div = document.createElement('div');
+      div.className = 'banner banner-warning';
+      div.textContent = 'A schedule exists. Regenerating will clear all recorded results.';
+      banner.appendChild(div);
+    }
+  }
+
+  /* ─── RENDER MATCHES ─── */
+  function renderMatches(){
+    const container = document.getElementById('matchesContent');
+    container.innerHTML = '';
+
+    if(!state.generated || state.matches.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'banner-empty';
+      empty.innerHTML = `No matches yet. Head to <strong>Home</strong> and use AI to generate a balanced schedule.`;
+      container.appendChild(empty);
+      return;
+    }
+
+    if(state.warning){
+      const warn = document.createElement('div');
+      warn.className = 'banner banner-warning';
+      warn.textContent = state.warning;
+      container.appendChild(warn);
+    }
+
+    // AI Stats
+    if(state.aiStats){
+      const aiStatsDiv = document.createElement('div');
+      aiStatsDiv.className = 'ai-stats';
+      aiStatsDiv.innerHTML = `
+        <div class="stat">
+          <div class="label">AI Confidence</div>
+          <div class="value">${Math.round((state.aiStats.perfectBalance ? 98 : 85))}%</div>
+        </div>
+        <div class="stat">
+          <div class="label">Balance Score</div>
+          <div class="value">${state.aiStats.perfectBalance ? 'Perfect' : 'Good'}</div>
+        </div>
+        <div class="stat">
+          <div class="label">Uniqueness</div>
+          <div class="value">${state.aiStats.uniquenessScore ? Math.round(state.aiStats.uniquenessScore * 100) : 100}%</div>
+        </div>
+      `;
+      container.appendChild(aiStatsDiv);
+    }
+
+    if(state.balanceStats){
+      const stats = state.balanceStats;
+      const statsDiv = document.createElement('div');
+      statsDiv.className = 'balance-stats';
+      const perfect = stats.perfectBalance ? '✅ Perfectly balanced!' : '⚖️ AI-optimized';
+      statsDiv.innerHTML = `
+        <div class="balance-stats__item"><span class="label">Matches per player</span><span class="value">${stats.minMatches}–${stats.maxMatches}</span></div>
+        <div class="balance-stats__item"><span class="label">Rest rounds per player</span><span class="value">${stats.minRest}–${stats.maxRest}</span></div>
+        <div class="balance-stats__item"><span class="label">Status</span><span class="value">${perfect}</span></div>
+        <div class="balance-stats__item"><span class="label">Total matches</span><span class="value">${stats.totalMatches}</span></div>
+      `;
+      container.appendChild(statsDiv);
+    }
+
+    const flat = state.matches;
+    const completed = flat.filter(m => m.winnerSide).length;
+    const totalElapsed = flat.reduce((sum, m) => sum + getTimerElapsed(m.id), 0);
+
+    const scoreboard = document.createElement('div');
+    scoreboard.className = 'scoreboard';
+    scoreboard.innerHTML = `
+      <div class="scoreboard__cell">
+        <div class="scoreboard__label">Game Point</div>
+        <div class="scoreboard__value">${state.config.gamePoint}</div>
+      </div>
+      <div class="scoreboard__cell">
+        <div class="scoreboard__label">Match Length</div>
+        <div class="scoreboard__value">${state.matchMinutes} min</div>
+      </div>
+      <div class="scoreboard__cell">
+        <div class="scoreboard__label">Completed</div>
+        <div class="scoreboard__value">${completed}/${flat.length}</div>
+      </div>
+      <div class="scoreboard__cell">
+        <div class="scoreboard__label">Total Time</div>
+        <div class="scoreboard__value">${formatTimer(totalElapsed)}</div>
+      </div>
+    `;
+    container.appendChild(scoreboard);
+
+    const grid = document.createElement('div');
+    grid.className = 'match-grid';
+    flat.forEach(match => grid.appendChild(renderMatchCard(match)));
+    container.appendChild(grid);
+
+    // AI indicator
+    if (state.aiUsed) {
+      const aiIndicator = document.createElement('div');
+      aiIndicator.className = 'ai-indicator';
+      aiIndicator.innerHTML = `<span class="pulse"></span> AI optimized · ${flat.length} matches generated`;
+      container.appendChild(aiIndicator);
+    }
+
+    if (window._timerInterval) clearInterval(window._timerInterval);
+    window._timerInterval = setInterval(() => {
+      let hasRunning = false;
+      for (const mid in state.timers) {
+        if (state.timers[mid] && state.timers[mid].running) {
+          hasRunning = true;
+          break;
+        }
+      }
+      if (hasRunning) {
+        document.querySelectorAll('.timer-display').forEach(el => {
+          const matchId = el.dataset.matchId;
+          if (matchId) {
+            const elapsed = getTimerElapsed(matchId);
+            el.textContent = formatTimer(elapsed);
+          }
+        });
+      }
+    }, 1000);
+  }
+
+  function renderMatchCard(match){
+    const card = document.createElement('div');
+    card.className = 'match-card' + (match.winnerSide ? ' decided' : '') + (state.aiUsed ? ' ai-generated' : '');
+    
+    const meta = document.createElement('div');
+    meta.className = 'match-card__meta mono';
+    
+    const elapsed = getTimerElapsed(match.id);
+    const timerData = state.timers[match.id] || { running: false };
+    const isRunning = timerData.running;
+    const isDecided = !!match.winnerSide;
+    
+    meta.innerHTML = `
+      <span>${match.id.toUpperCase()}${state.aiUsed ? ' <span class="ai-badge">AI</span>' : ''}</span>
+      <div class="match-card__timer">
+        <span class="timer-display" data-match-id="${match.id}">${formatTimer(elapsed)}</span>
+        <button class="timer-btn ${isRunning ? 'running' : ''}" data-match-id="${match.id}" ${isDecided ? 'disabled' : ''}>
+          ${isDecided ? '✓' : (isRunning ? '⏹' : '▶')}
+        </button>
+        <button class="timer-btn" data-match-id="${match.id}" data-reset="true" ${isDecided ? 'disabled' : ''}>↺</button>
+      </div>
+    `;
+    card.appendChild(meta);
+
+    const timerBtn = meta.querySelector('.timer-btn:not([data-reset])');
+    if (timerBtn) {
+      timerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!match.winnerSide) toggleTimer(match.id);
+      });
+    }
+    const resetBtn = meta.querySelector('.timer-btn[data-reset]');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!match.winnerSide) resetTimer(match.id);
+      });
+    }
+
+    const court = document.createElement('div');
+    court.className = 'match-card__court';
+
+    const gamePoint = state.config.gamePoint;
+    const scores = state.scores[match.id] || { sideA: 0, sideB: 0 };
+    const winner = match.winnerSide;
+
+    const sideA = document.createElement('div');
+    sideA.className = 'match-card__side' + (winner === 'A' ? ' winner' : (winner ? ' loser' : ''));
+    if (!winner) {
+      sideA.addEventListener('click', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        incrementScore(match.id, 'A');
+      });
+    }
+    
+    const scoreClassA = getScoreClass('A', scores.sideA, scores.sideB, gamePoint);
+    sideA.innerHTML = `
+      <span class="match-card__side-name">${match.sideA.label}</span>
+      <span class="match-card__side-label">Team A</span>
+      <input class="match-card__score ${scoreClassA} ${winner ? 'locked' : ''}" 
+            type="number" 
+            value="${scores.sideA}" 
+            min="0" 
+            data-match="${match.id}" data-side="A"
+            ${winner ? 'readonly' : ''}
+            ${!winner ? 'style="cursor:text;"' : ''}>
+    `;
+    const scoreInputA = sideA.querySelector('.match-card__score');
+    scoreInputA.addEventListener('change', (e) => {
+      updateScoreDirect(match.id, 'A', e.target.value);
+    });
+    scoreInputA.addEventListener('click', (e) => e.stopPropagation());
+
+    const net = document.createElement('div');
+    net.className = 'match-card__net';
+
+    const sideB = document.createElement('div');
+    sideB.className = 'match-card__side' + (winner === 'B' ? ' winner' : (winner ? ' loser' : ''));
+    if (!winner) {
+      sideB.addEventListener('click', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        incrementScore(match.id, 'B');
+      });
+    }
+    
+    const scoreClassB = getScoreClass('B', scores.sideB, scores.sideA, gamePoint);
+    sideB.innerHTML = `
+      <span class="match-card__side-name">${match.sideB.label}</span>
+      <span class="match-card__side-label">Team B</span>
+      <input class="match-card__score ${scoreClassB} ${winner ? 'locked' : ''}" 
+            type="number" 
+            value="${scores.sideB}" 
+            min="0" 
+            data-match="${match.id}" data-side="B"
+            ${winner ? 'readonly' : ''}
+            ${!winner ? 'style="cursor:text;"' : ''}>
+    `;
+    const scoreInputB = sideB.querySelector('.match-card__score');
+    scoreInputB.addEventListener('change', (e) => {
+      updateScoreDirect(match.id, 'B', e.target.value);
+    });
+    scoreInputB.addEventListener('click', (e) => e.stopPropagation());
+
+    court.appendChild(sideA);
+    court.appendChild(net);
+    court.appendChild(sideB);
+    card.appendChild(court);
+
+    const actions = document.createElement('div');
+    actions.className = 'match-card__actions';
+
+    if (winner) {
+      const winnerLabel = document.createElement('span');
+      winnerLabel.style.cssText = 'padding: 10px 14px; color: var(--accent); font-size: 13px; font-weight: 600; flex: 1;';
+      winnerLabel.textContent = `🏸 ${winner === 'A' ? match.sideA.label : match.sideB.label} won!`;
+      actions.appendChild(winnerLabel);
+    } else {
+      const btnA = document.createElement('button');
+      btnA.className = 'btn btn-ghost btn-sm';
+      btnA.textContent = `🏸 ${match.sideA.label.split(' & ')[0]} wins`;
+      btnA.addEventListener('click', () => {
+        const currentScores = state.scores[match.id] || { sideA: 0, sideB: 0 };
+        const gamePoint = state.config.gamePoint;
+        
+        if (currentScores.sideA === 0 && currentScores.sideB === 0) {
+          ensureTimerStarted(match.id);
+        }
+
+        if (checkWinCondition(currentScores.sideA, currentScores.sideB, gamePoint) === 'A') {
+          match.winnerSide = 'A';
+        } else {
+          if (currentScores.sideB >= gamePoint) {
+            currentScores.sideA = currentScores.sideB + 2;
+          } else {
+            currentScores.sideA = gamePoint + 1;
+            if (currentScores.sideA - currentScores.sideB < 2) {
+              currentScores.sideA = currentScores.sideB + 2;
+            }
+          }
+          state.scores[match.id] = currentScores;
+          match.winnerSide = 'A';
+        }
+        if (state.timers[match.id]) {
+          const currentElapsed = getTimerElapsed(match.id);
+          if (state.timers[match.id].running) {
+            state.timers[match.id].running = false;
+          }
+          state.timers[match.id].finalElapsed = currentElapsed;
+          state.timers[match.id].elapsed = currentElapsed;
+        }
+        saveState();
+        renderMatches();
+        renderLeaderboard();
+      });
+
+      const btnB = document.createElement('button');
+      btnB.className = 'btn btn-ghost btn-sm';
+      btnB.textContent = `🏸 ${match.sideB.label.split(' & ')[0]} wins`;
+      btnB.addEventListener('click', () => {
+        const currentScores = state.scores[match.id] || { sideA: 0, sideB: 0 };
+        const gamePoint = state.config.gamePoint;
+        
+        if (currentScores.sideA === 0 && currentScores.sideB === 0) {
+          ensureTimerStarted(match.id);
+        }
+
+        if (checkWinCondition(currentScores.sideA, currentScores.sideB, gamePoint) === 'B') {
+          match.winnerSide = 'B';
+        } else {
+          if (currentScores.sideA >= gamePoint) {
+            currentScores.sideB = currentScores.sideA + 2;
+          } else {
+            currentScores.sideB = gamePoint + 1;
+            if (currentScores.sideB - currentScores.sideA < 2) {
+              currentScores.sideB = currentScores.sideA + 2;
+            }
+          }
+          state.scores[match.id] = currentScores;
+          match.winnerSide = 'B';
+        }
+        if (state.timers[match.id]) {
+          const currentElapsed = getTimerElapsed(match.id);
+          if (state.timers[match.id].running) {
+            state.timers[match.id].running = false;
+          }
+          state.timers[match.id].finalElapsed = currentElapsed;
+          state.timers[match.id].elapsed = currentElapsed;
+        }
+        saveState();
+        renderMatches();
+        renderLeaderboard();
+      });
+
+      actions.appendChild(btnA);
+      actions.appendChild(btnB);
+    }
+
+    card.appendChild(actions);
+    return card;
+  }
+
+  function getScoreClass(side, score, opponentScore, gamePoint) {
+    const status = getScoreStatus(
+      side === 'A' ? score : opponentScore,
+      side === 'B' ? score : opponentScore,
+      gamePoint
+    );
+    
+    if (status.status === 'won') {
+      return status.winner === side ? 'winning' : 'losing';
+    }
+    if (status.status === 'deuce') return 'deuce';
+    if (status.status === 'advantage') {
+      return status.leader === side ? 'advantage' : 'match-point';
+    }
+    if (status.status === 'matchPoint') {
+      return status.player === side ? 'match-point' : '';
+    }
+    return '';
+  }
+
+  /* ─── RENDER LEADERBOARD ─── */
+  function computeLeaderboard(){
+    const stats = {};
+    state.players.forEach(p => { stats[p.id] = { name: p.name, wins:0, losses:0, played:0 }; });
+
+    state.matches.forEach(m => {
+      if(!m.winnerSide) return;
+      const winningIds = m.winnerSide === 'A' ? m.sideA.playerIds : m.sideB.playerIds;
+      const losingIds = m.winnerSide === 'A' ? m.sideB.playerIds : m.sideA.playerIds;
+      winningIds.forEach(id => { if(stats[id]){ stats[id].wins++; stats[id].played++; } });
+      losingIds.forEach(id => { if(stats[id]){ stats[id].losses++; stats[id].played++; } });
+    });
+
+    return Object.values(stats).sort((a,b) => b.wins - a.wins || a.losses - b.losses);
+  }
+
+  function renderLeaderboard(){
+    const container = document.getElementById('leaderboardContent');
+    container.innerHTML = '';
+
+    if(!state.generated || state.players.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'banner-empty';
+      empty.innerHTML = `No standings yet. Generate a balanced schedule first.`;
+      container.appendChild(empty);
+      return;
+    }
+
+    const standings = computeLeaderboard();
+    const table = document.createElement('table');
+    table.className = 'leaderboard-table';
+    table.innerHTML = `<thead><tr><th>#</th><th>Player</th><th>W</th><th>L</th><th>Played</th><th>Win %</th></tr></thead><tbody></tbody>`;
+    const tbody = table.querySelector('tbody');
+
+    standings.forEach((s, idx) => {
+      const pct = s.played ? Math.round((s.wins/s.played)*100) : 0;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="rank">${idx+1}</td><td>${s.name}</td><td>${s.wins}</td><td>${s.losses}</td><td>${s.played}</td><td class="win-pct">${s.played ? pct + '%' : '—'}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    const wrap = document.createElement('div');
+    wrap.className = 'leaderboard-wrap';
+    wrap.appendChild(table);
+    container.appendChild(wrap);
+
+    const summary = buildMatchSummary();
+    if (summary) {
+      const summaryDiv = document.createElement('div');
+      summaryDiv.className = 'match-summary';
+      summaryDiv.innerHTML = `<h3>📋 Match Summary</h3>`;
+      
+      const completedMatches = state.matches.filter(m => m.winnerSide);
+      completedMatches.forEach((m, idx) => {
+        const scores = state.scores[m.id] || { sideA: 0, sideB: 0 };
+        const isAWinner = m.winnerSide === 'A';
+        const winningTeam = isAWinner ? m.sideA : m.sideB;
+        const losingTeam = isAWinner ? m.sideB : m.sideA;
+        
+        const winningPlayers = winningTeam.label.split(' & ');
+        const losingPlayers = losingTeam.label.split(' & ');
+        const winningLabel = winningPlayers.join(' 🏆 ');
+        const losingLabel = losingPlayers.join(' & ');
+        
+        const item = document.createElement('div');
+        item.className = 'match-summary-item';
+        item.innerHTML = `
+          <span class="teams">${winningLabel} VS ${losingLabel}</span>
+          <span class="score">${scores.sideA} - ${scores.sideB}</span>
+        `;
+        summaryDiv.appendChild(item);
+      });
+      
+      container.appendChild(summaryDiv);
+    }
+  }
+
+  /* ─── SHARE ─── */
+  function buildFullShareText() {
+    const date = new Date().toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' });
+    const standings = computeLeaderboard();
+    let text = `🏸 AI-Powered Match Results — ${date}\n\n`;
+    if (state.aiUsed) {
+      text += '🤖 Optimized with Courtside AI\n\n';
+    }
+    text += 'LEADERBOARD\n';
+    text += '─'.repeat(20) + '\n';
+    const medals = ['🥇','🥈','🥉'];
+    standings.forEach((s, i) => {
+      const medal = i < 3 ? medals[i] : `${i+1}.`;
+      text += `${medal} ${s.name} — ${s.wins}W, ${s.losses}L\n`;
+    });
+    
+    const summary = buildMatchSummary();
+    if (summary) {
+      text += summary;
+    }
+    
+    const totalMatches = state.matches.filter(m => m.winnerSide).length;
+    text += `\nTotal Matches: ${totalMatches}`;
+    if(state.balanceStats) {
+      text += `\nBalance: ${state.balanceStats.minMatches}–${state.balanceStats.maxMatches} matches per player`;
+    }
+    if(state.aiStats) {
+      text += `\nAI Confidence: ${state.aiStats.perfectBalance ? 'Perfect' : 'High'}`;
+    }
+    return text;
+  }
+
+  function shareResults(){
+    const text = buildFullShareText();
+    if(navigator.share){
+      navigator.share({ title: 'Badminton Results', text }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Results copied to clipboard!');
+      }).catch(() => {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        try { document.execCommand('copy'); alert('Results copied to clipboard!'); } catch(e) { alert('Copy failed. Please copy manually.'); }
+        document.body.removeChild(textarea);
+      });
+    }
+  }
+
+  /* ─── VIEW SWITCHING ─── */
+  function setView(view){
+    state.currentView = view;
+    saveState();
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + view).classList.add('active');
+    document.querySelectorAll('.navbar__item[data-view]').forEach(btn => btn.classList.toggle('active', btn.dataset.view === view));
+    if(view === 'home') renderHome();
+    if(view === 'matches') renderMatches();
+    if(view === 'leaderboard') renderLeaderboard();
+    closeNav();
+  }
+
+  function renderAll(){ renderHome(); renderMatches(); renderLeaderboard(); }
+
+  /* ─── NAV ─── */
+  const navMenu = document.getElementById('navMenu');
+  const navToggle = document.getElementById('navToggle');
+  function closeNav(){ navMenu.classList.remove('open'); navToggle.setAttribute('aria-expanded','false'); }
+  navToggle.addEventListener('click', (e) => { e.stopPropagation(); const isOpen = navMenu.classList.toggle('open'); navToggle.setAttribute('aria-expanded', String(isOpen)); });
+  document.addEventListener('click', (e) => { if(!navMenu.contains(e.target)) closeNav(); });
+  document.querySelectorAll('.navbar__item[data-view]').forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.view)));
+
+  /* ─── RESET ─── */
+  document.getElementById('resetBtn').addEventListener('click', () => { closeNav(); if(confirm('Reset will permanently clear all data. Continue?')) resetState(); });
+
+  /* ─── THEME TOGGLE ─── */
+  document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+  /* ─── SHARE BUTTONS ─── */
+  document.getElementById('shareMatchesBtn').addEventListener('click', shareResults);
+  document.getElementById('shareLeaderboardBtn').addEventListener('click', shareResults);
+
+  /* ─── SETUP FORM ─── */
+  document.getElementById('numPlayers').addEventListener('input', () => { renderPlayerNameInputs(); updateRecommendation(); });
+  document.getElementById('durationValue').addEventListener('input', updateRecommendation);
+  document.getElementById('durationUnit').addEventListener('change', updateRecommendation);
+  document.querySelectorAll('#gamePointSegmented button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#gamePointSegmented button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      updateRecommendation();
+    });
+  });
+
+  async function generateSchedule(useAI = true) {
+    const numPlayers = Number(document.getElementById('numPlayers').value);
+    const durationValue = Number(document.getElementById('durationValue').value);
+    const durationUnit = document.getElementById('durationUnit').value;
+    const gamePoint = getGamePoint();
+    const matchCount = Number(document.getElementById('matchCount').value);
+    const banner = document.getElementById('homeBanner');
+    const aiStatus = document.getElementById('aiStatus');
+    const generateBtn = document.getElementById('generateBtn');
+    const aiBtn = document.getElementById('aiOptimizeBtn');
+    
+    banner.innerHTML = '';
+
+    const errors = [];
+    if(!Number.isInteger(numPlayers) || numPlayers < 4) errors.push('Need at least 4 players for doubles.');
+    if(!durationValue || durationValue <= 0) errors.push('Enter a total duration greater than 0.');
+    if(!matchCount || matchCount < 1) errors.push('Choose at least 1 match to schedule.');
+
+    if(errors.length){
+      const div = document.createElement('div');
+      div.className = 'banner banner-error';
+      div.innerHTML = errors.join('<br>');
+      banner.appendChild(div);
+      return;
+    }
+
+    if(state.generated){
+      if(!confirm('This will reshuffle pairings and clear results. Continue?')) return;
+    }
+
+    // Show loading state
+    aiStatus.style.display = 'block';
+    generateBtn.disabled = true;
+    aiBtn.disabled = true;
+
+    const nameInputs = Array.from(document.querySelectorAll('#playerNames input'));
+    const playerNames = nameInputs.map((inp, i) => inp.value.trim() || `Player ${i+1}`);
+    const players = playerNames.map((name, i) => ({ id: 'p'+(i+1), name }));
+
+    const config = { numPlayers, durationValue, durationUnit, gamePoint, matchCount };
+    
+    // Build existing stats for AI
+    let existingStats = null;
+    if (useAI && state.balanceStats) {
+      existingStats = {};
+      const standings = computeLeaderboard();
+      standings.forEach(s => {
+        const playerId = state.players.find(p => p.name === s.name)?.id;
+        if (playerId) {
+          existingStats[playerId] = {
+            skillScore: s.played > 0 ? s.wins / s.played : 0.5,
+            winRate: s.played > 0 ? s.wins / s.played : 0
+          };
+        }
+      });
+    }
+
+    try {
+      // Call the backend API (simulated)
+      const result = await API.generateSchedule(config, players, existingStats);
+
+      state.config = config;
+      state.playerNames = playerNames;
+      state.players = players;
+      state.matches = result.matches;
+      state.matchMinutes = result.matchMinutes;
+      state.warning = result.warning;
+      state.generated = true;
+      state.balanceStats = result.balanceStats;
+      state.aiUsed = useAI;
+      state.aiStats = result.aiStats;
+      state.scores = {};
+      state.timers = {};
+
+      saveState();
+      
+      // Show success message
+      if (useAI && result.aiStats) {
+        const div = document.createElement('div');
+        div.className = 'banner banner-success';
+        div.innerHTML = `Badminton ${result.matches.length} matches with ${result.aiStats.perfectBalance ? 'perfect' : 'optimal'} balance!`;
+        banner.appendChild(div);
+      } else {
+        const div = document.createElement('div');
+        div.className = 'banner banner-success';
+        div.innerHTML = `✅ Generated ${result.matches.length} balanced matches.`;
+        banner.appendChild(div);
+      }
+      
+      setView('matches');
+    } catch (error) {
+      const div = document.createElement('div');
+      div.className = 'banner banner-error';
+      div.innerHTML = `❌ Error generating schedule: ${error.message}`;
+      banner.appendChild(div);
+    } finally {
+      aiStatus.style.display = 'none';
+      generateBtn.disabled = false;
+      aiBtn.disabled = false;
+    }
+  }
+
+  document.getElementById('setupForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    generateSchedule(false);
+  });
+
+  document.getElementById('aiOptimizeBtn').addEventListener('click', () => {
+    generateSchedule(true);
+  });
+
+  /* ─── INIT ─── */
+  (function init(){ applyTheme(); renderAll(); setView(state.currentView || 'home'); })();
+</script>
+</body>
+</html>
